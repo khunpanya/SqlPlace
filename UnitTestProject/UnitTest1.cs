@@ -148,7 +148,7 @@ namespace UnitTestProject
 
             // Place list
             q = new SqlStatement("select * from User where {CONDS}");
-            var cond = q.PlaceList("CONDS", new SqlList(" and ", "(1=1)"));
+            var cond = q.PlaceStatement("CONDS", new SqlList(" and ", "(1=1)")) as SqlList;
             cmd = q.ToCommand();
             Assert.AreEqual("select * from User where (1=1)", cmd.CommandText);
             cond.Add("name={0}", xName);
@@ -164,12 +164,12 @@ namespace UnitTestProject
 
             // Place And/Comma Collection
             q = new SqlStatement("select {FLDS} from User where {CONDS}");
-            cond = q.PlaceList("CONDS", SqlList.AndClauses());
+            cond = q.PlaceStatement("CONDS", SqlList.AndClauses()) as SqlList;
             cond.Add("name={0}", xName);
             cond.Add("create_date={0}", xCreateDate);
             cond.Add("status={0}", xStatus);
             cond.Add("update_date={0}", xUpdateDate);
-            var flds = q.PlaceList("FLDS", SqlList.CommaClauses());
+            var flds = q.PlaceStatement("FLDS", SqlList.CommaClauses()) as SqlList;
             flds.Add("f1");
             flds.Add("f2");
             flds.Add("f3");
@@ -184,8 +184,8 @@ namespace UnitTestProject
             var fields = new Dictionary<string, object>() { { "name={0}", "AAA" }, { "gender={0}", 1 } };
             var conditions = new Dictionary<string, object>() { { "section={0}", 2 }, { "status={0}", 3 }, { "region=@R", 99 }, { "country='TH'", null } };
             q = new SqlStatement("update Table1 set {FLDS} where {CONDS}");
-            q.PlaceList("FLDS", SqlList.CommaClauses()).AddRange(fields);
-            q.PlaceList("CONDS", SqlList.AndClauses()).AddRange(conditions);
+            (q.PlaceStatement("FLDS", SqlList.CommaClauses()) as SqlList).AddRange(fields);
+            (q.PlaceStatement("CONDS", SqlList.AndClauses()) as SqlList).AddRange(conditions);
             q.PlaceParameter("R", 98);
             cmd = q.ToCommand();
             Assert.AreEqual("update Table1 set name=@p0, gender=@p1 where section=@p2 and status=@p3 and region=@R and country='TH'", cmd.CommandText);
@@ -197,8 +197,8 @@ namespace UnitTestProject
 
             var assigns = new Dictionary<string, object>() { { "name", "AAA" }, { "gender", 1 } };
             q = new SqlStatement("update Table1 set {FLDS} where {CONDS}");
-            q.PlaceList("FLDS", SqlList.CommaAssignments(assigns));
-            q.PlaceList("CONDS", SqlList.AndClauses()).AddRange(conditions);
+            q.PlaceStatement("FLDS", SqlList.CommaAssignments(assigns));
+            (q.PlaceStatement("CONDS", SqlList.AndClauses()) as SqlList).AddRange(conditions);
             q.PlaceParameter("R", 98);
             cmd = q.ToCommand();
             Assert.AreEqual("update Table1 set name=@p0, gender=@p1 where section=@p2 and status=@p3 and region=@R and country='TH'", cmd.CommandText);
@@ -212,8 +212,8 @@ namespace UnitTestProject
             object[] set1 = { new ParameterInfo("1", SqlDbType.VarChar), "3", "5" };
             object[] set2 = { new ParameterInfo(1, SqlDbType.SmallInt), 3, 5 };
             q = new SqlStatement("select * from T1 where F1 in ({SET1}) and F2 in ({SET2})");
-            q.PlaceList("SET1", SqlList.CommaValues(set1));
-            q.PlaceList("SET2", SqlList.CommaValues(set2));
+            q.PlaceStatement("SET1", SqlList.CommaValues(set1));
+            q.PlaceStatement("SET2", SqlList.CommaValues(set2));
             cmd = q.ToCommand();
             Assert.AreEqual("select * from T1 where F1 in (@p0, @p1, @p2) and F2 in (@p3, @p4, @p5)", cmd.CommandText);
             Assert.AreEqual("1", cmd.Parameters["@p0"].Value);
@@ -306,27 +306,6 @@ namespace UnitTestProject
             A.PlaceParameter("B", B);
             B.PlaceParameter("C", C);
             C.PlaceParameter("A", A);
-        }
-
-
-        [TestMethod]
-        public void TestPlaceListAsParameter()
-        {
-            object[] set1 = { new ParameterInfo("1", SqlDbType.VarChar), "3", "5" };
-            object[] set2 = { new ParameterInfo(1, SqlDbType.SmallInt), 3, 5 };
-
-            var q = new SqlStatement("select * from T1 where {FILTER}");
-            q.PlaceStatement("FILTER", "F1 in ({A}) and F2 in ({B})", new Dictionary<string, object>() { { "A", SqlList.CommaValues(set1) }, { "B", SqlList.CommaValues(set2) } });
-            var cmd = q.ToCommand();
-            cmd = q.ToCommand(); // Do it again should yield the same SQL
-            cmd = q.ToCommand();
-            Assert.AreEqual("select * from T1 where F1 in (@p0, @p1, @p2) and F2 in (@p3, @p4, @p5)", cmd.CommandText);
-            Assert.AreEqual("1", cmd.Parameters["@p0"].Value);
-            Assert.AreEqual("3", cmd.Parameters["@p1"].Value);
-            Assert.AreEqual("5", cmd.Parameters["@p2"].Value);
-            Assert.AreEqual(1, cmd.Parameters["@p3"].Value);
-            Assert.AreEqual(3, cmd.Parameters["@p4"].Value);
-            Assert.AreEqual(5, cmd.Parameters["@p5"].Value);
         }
 
     }

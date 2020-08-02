@@ -83,7 +83,7 @@ var qconds = new SqlStatement("f1={AA} and f2={BB}");
 q.PlaceStatement("SRC", qsrc);
 q.PlaceStatement("CONDS", qconds);
 q.PlaceParameters(new Dictionary<string, object>() { { "AA", 10 }, { "BB", "A" } });
-// "select * from (select * from View1) src where f1=@AA and f2=@BB"
+// "select * from (select * from View1) t1 where f1=@AA and f2=@BB"
 // @AA = 10, @BB = 'A'
 ```
 
@@ -121,7 +121,7 @@ You don't really have to use them. But if you do, they might help improve readab
 **AndClauses** to compose "where" conditions.
 ```csharp
 var q = new SqlStatement("select * from Table1 where {CONDS}");
-var qconds = q.PlaceList("CONDS", SqlList.AndClauses());
+var qconds = q.PlaceStatement("CONDS", SqlList.AndClauses()) as SqlList;
 qconds.Add("(f1={0} or f2={1})", 10, "A");
 qconds.Add("f3>{0}", 100);
 // "select * from Table1 where (f1=@p0 or f2=@p1) and f3>@p2"
@@ -132,7 +132,7 @@ qconds.Add("f3>{0}", 100);
 ```csharp
 var q = new SqlStatement("select * from Table1 where f1 in ({VALS})");
 var vals = new object[] { 10, 20, 30 };
-q.PlaceList("VALS", SqlList.CommaValues(vals));
+q.PlaceStatement("VALS", SqlList.CommaValues(vals));
 // "select * from Table1 where f1 in (@p0, @p1, @p2)"
 // @p0 = 10, @p1 = 20, @p2 = 30
 ```
@@ -140,7 +140,7 @@ q.PlaceList("VALS", SqlList.CommaValues(vals));
 **CommaClauses** to compose "select" or "insert" fields.
 ```csharp
 var q = new SqlStatement("select {FLDS} from Table1");
-var qflds = q.PlaceList("FLDS", SqlList.CommaClauses());
+var qflds = q.PlaceStatement("FLDS", SqlList.CommaClauses()) as SqlList;
 qflds.Add("f1");
 qflds.Add("f2");
 qflds.Add("{0} f3", 100);
@@ -150,9 +150,9 @@ qflds.Add("{0} f3", 100);
 ```csharp
 var q = new SqlStatement("insert into Table1({FLDS}) values({VALS})");
 var flds = new string[] {"f1", "f2"};
-var vals = new object[] {10, "A"}
-q.PlaceList("FLDS", SqlList.CommaClauses(flds));
-q.PlaceList("VALS", SqlList.CommaValues(vals));
+var vals = new object[] {10, "A"};
+q.PlaceStatement("FLDS", SqlList.CommaClauses(flds));
+q.PlaceStatement("VALS", SqlList.CommaValues(vals));
 // "insert into Table1(f1, f2) values(@p0, @p1)"
 // @p0 = 10, @p1 = 'A'
 ```
@@ -161,7 +161,7 @@ q.PlaceList("VALS", SqlList.CommaValues(vals));
 ```csharp
 var q = new SqlStatement("update Table1 set {ASGNS} where f1=0");
 var pairs = new Dictionary<string, object>() { { "f1", 10 }, { "f2", "A" } };
-q.PlaceList("ASGNS", SqlList.CommaAssignments(pairs));
+q.PlaceStatement("ASGNS", SqlList.CommaAssignments(pairs));
 // "update Table1 set f1=@p0, f2=@p1 where f1=0"
 // @p0 = 10, @p1 = 'A'
 ```

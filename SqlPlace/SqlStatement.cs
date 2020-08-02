@@ -164,11 +164,6 @@ namespace SqlPlace
             return PlaceStatement(globalName, child);
         }
 
-        public SqlList PlaceList(string globalName, SqlList list)
-        {
-            return (SqlList)PlaceStatement(globalName, list);
-        }
-
         #endregion
 
         #region "DbCommand"
