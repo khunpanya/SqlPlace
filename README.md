@@ -1,4 +1,8 @@
-SqlPlace is a .NET library to help you build complex parameterized SQL query.
+# SqlPlace
+
+[![SqlPlace on Nuget](https://img.shields.io/nuget/vpre/SqlPlace.svg)](https://www.nuget.org/packages/SqlPlace)
+
+SqlPlace is a .NET framework library to help you build complex parameterized SQL query.
 
 - [Basic usage](#basic-usage)
 - [Parameterizing](#parameterizing)
@@ -10,8 +14,8 @@ SqlPlace is a .NET library to help you build complex parameterized SQL query.
     - [Predefined lists](#predefined-lists)
 - [Helper extensions](#helper-extensions)
     - [Execution](#execution)
-    - [Extract objects' properties](#extract-objects'-properties)
-- [ETC.](#etc.)    
+    - [Extract objects' properties](#extract-objects-properties)
+- [ETC.](#etc)    
 
 # Basic usage
 Use **SqlPlace.SqlStatement** class to compose SQL and construct ADO.NET DbCommand.
