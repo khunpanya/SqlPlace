@@ -184,7 +184,6 @@ namespace UnitTestProject
             var fields = new Dictionary<string, object>() { { "name={0}", "AAA" }, { "gender={0}", 1 } };
             var conditions = new Dictionary<string, object>() { { "section={0}", 2 }, { "status={0}", 3 }, { "region=@R", 99 }, { "country='TH'", null } };
             q = new SqlStatement("update Table1 set {FLDS} where {CONDS}");
-            // TODO There should be some ObjectUtils to automatically get Property Names and Values from an object
             q.PlaceList("FLDS", SqlList.CommaClauses()).AddRange(fields);
             q.PlaceList("CONDS", SqlList.AndClauses()).AddRange(conditions);
             q.PlaceParameter("R", 98);
@@ -285,9 +284,7 @@ namespace UnitTestProject
 
             // TODO Clone (for slightly different)
 
-            // TODO Test the "TOP 10"
-
-            // TODO Publicize the "Make"
+            // TODO Data provider specific replacement
 
         }
 
