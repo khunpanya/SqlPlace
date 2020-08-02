@@ -14,7 +14,7 @@ SqlPlace is a .NET library to help you build complex parameterized SQL query.
 - [ETC.](#etc.)    
 
 # Basic usage
-Use **SqlPlace.SqlStatement** class to compose SQL and construct DbCommand.
+Use **SqlPlace.SqlStatement** class to compose SQL and construct ADO.NET DbCommand.
 ```csharp
 using(var conn = new SqlConnection(connString))
 {
