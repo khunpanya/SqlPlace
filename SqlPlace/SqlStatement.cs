@@ -204,7 +204,9 @@ namespace SqlPlace
             _dbParameters.Clear();
             foreach (var param in cmdInfo.Parameters)
             {
-                var parameter = CommandFactory.CreateParameter(param.ParameterName, param.Value, param.SqlDbType, param.Size, param.Direction);
+                var pValue = param.Value;
+                if (pValue == null) pValue = DBNull.Value;
+                var parameter = CommandFactory.CreateParameter(param.ParameterName, pValue, param.SqlDbType, param.Size, param.Direction);
                 cmd.Parameters.Add(parameter);
                 if (param._globalName != null)
                     _dbParameters.Add(param._globalName, parameter);

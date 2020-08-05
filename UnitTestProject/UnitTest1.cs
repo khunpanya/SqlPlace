@@ -36,7 +36,7 @@ namespace UnitTestProject
             Assert.AreEqual(SqlDbType.NVarChar, (cmd.Parameters["@p3"] as SqlParameter).SqlDbType);
             Assert.AreEqual(xCreateDate, cmd.Parameters["@p2"].Value);
             Assert.AreEqual(xStatus, cmd.Parameters["@p1"].Value);
-            Assert.IsNull(cmd.Parameters["@p0"].Value);
+            Assert.AreEqual(DBNull.Value, cmd.Parameters["@p0"].Value);
 
             // Detailed parameters
             q = new SqlStatement("select * from User where name={3} and create_date={2} and status={1} and update_date={0}",
@@ -47,7 +47,7 @@ namespace UnitTestProject
             Assert.AreEqual(SqlDbType.VarChar, (cmd.Parameters["@p3"] as SqlParameter).SqlDbType);
             Assert.AreEqual(xCreateDate, cmd.Parameters["@p2"].Value);
             Assert.AreEqual(xStatus, cmd.Parameters["@p1"].Value);
-            Assert.IsNull(cmd.Parameters["@p0"].Value);
+            Assert.AreEqual(DBNull.Value, cmd.Parameters["@p0"].Value);
 
             // Placing local parameters individually
             q = new SqlStatement("select * from User where name={3} and create_date={2} and status={1} and update_date={0}");
@@ -61,7 +61,7 @@ namespace UnitTestProject
             Assert.AreEqual(SqlDbType.VarChar, (cmd.Parameters["@p3"] as SqlParameter).SqlDbType);
             Assert.AreEqual(xCreateDate, cmd.Parameters["@p2"].Value);
             Assert.AreEqual(xStatus, cmd.Parameters["@p1"].Value);
-            Assert.IsNull(cmd.Parameters["@p0"].Value);
+            Assert.AreEqual(DBNull.Value, cmd.Parameters["@p0"].Value);
 
             // Named (global) parameters
             q = new SqlStatement("select * from User where name={N} and create_date={C} and status={S} and update_date={U}",
@@ -72,7 +72,7 @@ namespace UnitTestProject
             Assert.AreEqual(SqlDbType.VarChar, (cmd.Parameters["@N"] as SqlParameter).SqlDbType);
             Assert.AreEqual(xCreateDate, cmd.Parameters["@C"].Value);
             Assert.AreEqual(xStatus, cmd.Parameters["@S"].Value);
-            Assert.IsNull(cmd.Parameters["@U"].Value);
+            Assert.AreEqual(DBNull.Value, cmd.Parameters["@U"].Value);
 
             // Placing local and global parameters
             q = new SqlStatement("select * from User where name={N} and create_date={C} and status={0} and update_date={1}", xStatus, xUpdateDate);
@@ -84,7 +84,7 @@ namespace UnitTestProject
             Assert.AreEqual(SqlDbType.VarChar, (cmd.Parameters["@N"] as SqlParameter).SqlDbType);
             Assert.AreEqual(xCreateDate, cmd.Parameters["@C"].Value);
             Assert.AreEqual(xStatus, cmd.Parameters["@p0"].Value);
-            Assert.IsNull(cmd.Parameters["@p1"].Value);
+            Assert.AreEqual(DBNull.Value, cmd.Parameters["@p1"].Value);
 
             // Placing Sub (Nested query)
             q = new SqlStatement("select * from User where name={N} and create_date={C} and {MORE}");
@@ -96,7 +96,7 @@ namespace UnitTestProject
             Assert.AreEqual(xName, cmd.Parameters["@N"].Value);
             Assert.AreEqual(xCreateDate, cmd.Parameters["@C"].Value);
             Assert.AreEqual(xStatus, cmd.Parameters["@p0"].Value);
-            Assert.IsNull(cmd.Parameters["@p1"].Value);
+            Assert.AreEqual(DBNull.Value, cmd.Parameters["@p1"].Value);
 
             // Mixed local and global parameter with subquery
             q = new SqlStatement("select * from User where name={0} and {MORE} and update_date={U}");
@@ -110,7 +110,7 @@ namespace UnitTestProject
             Assert.AreEqual(xName, cmd.Parameters["@p0"].Value);
             Assert.AreEqual(xCreateDate, cmd.Parameters["@p1"].Value);
             Assert.AreEqual(xStatus, cmd.Parameters["@S"].Value);
-            Assert.IsNull(cmd.Parameters["@U"].Value);
+            Assert.AreEqual(DBNull.Value, cmd.Parameters["@U"].Value);
 
             // Global parameter can be placed in subquery
             q = new SqlStatement("select * from User where name={0} and {MORE} and update_date={U}");
@@ -122,7 +122,7 @@ namespace UnitTestProject
             Assert.AreEqual(xName, cmd.Parameters["@p0"].Value);
             Assert.AreEqual(xCreateDate, cmd.Parameters["@p1"].Value);
             Assert.AreEqual(xStatus, cmd.Parameters["@S"].Value);
-            Assert.IsNull(cmd.Parameters["@U"].Value);
+            Assert.AreEqual(DBNull.Value, cmd.Parameters["@U"].Value);
 
             q = new SqlStatement("{A}-{1}-{0}-{MORE1}-{B}-{MORE2}", 10, 11);
             q.PlaceStatement("MORE1", "({0}+{A}+{B}+{1}+{MORE3})", 21, 22);
@@ -160,7 +160,7 @@ namespace UnitTestProject
             Assert.AreEqual(xName, cmd.Parameters["@p0"].Value);
             Assert.AreEqual(xCreateDate, cmd.Parameters["@p1"].Value);
             Assert.AreEqual(xStatus, cmd.Parameters["@p2"].Value);
-            Assert.IsNull(cmd.Parameters["@p3"].Value);
+            Assert.AreEqual(DBNull.Value, cmd.Parameters["@p3"].Value);
 
             // Place And/Comma Collection
             q = new SqlStatement("select {FLDS} from User where {CONDS}");
@@ -178,7 +178,7 @@ namespace UnitTestProject
             Assert.AreEqual(xName, cmd.Parameters["@p0"].Value);
             Assert.AreEqual(xCreateDate, cmd.Parameters["@p1"].Value);
             Assert.AreEqual(xStatus, cmd.Parameters["@p2"].Value);
-            Assert.IsNull(cmd.Parameters["@p3"].Value);
+            Assert.AreEqual(DBNull.Value, cmd.Parameters["@p3"].Value);
 
             // Relative token in collection, Absolute token in collection
             var fields = new Dictionary<string, object>() { { "name={0}", "AAA" }, { "gender={0}", 1 } };
@@ -280,6 +280,15 @@ namespace UnitTestProject
             Assert.AreEqual(10, cmd.Parameters["@B"].Value);
             Assert.AreEqual(ParameterDirection.Output, cmd.Parameters["@B"].Direction);
 
+            // Null parameter
+            q = new SqlStatement("select * from T1 where f1={0} and f2={1}", null, DBNull.Value);
+            cmd = q.ToCommand();
+            Assert.AreEqual("select * from T1 where f1=@p0 and f2=@p1", cmd.CommandText);
+            Assert.AreEqual(DBNull.Value, cmd.Parameters["@p0"].Value);
+            Assert.AreEqual(DBNull.Value, cmd.Parameters["@p1"].Value);
+            Assert.AreEqual("select * from T1 where f1=null and f2=null", q.PlainText()) ;
+
+
             // TODO Dont process JSON { }, Escape {{ }}
 
             // TODO Clone (for slightly different)
@@ -308,6 +317,7 @@ namespace UnitTestProject
             C.PlaceParameter("A", A);
         }
 
+        
     }
 
 }
