@@ -67,6 +67,10 @@ namespace SqlPlace
                 Func<int, string> nameFromHash = i => "Q" + GetHashCode().ToString() + "_" + i.ToString();
                 _sql = _sql.Replace("{" + localIndex.ToString() + "}", "{" + nameFromHash(localIndex) + "}");
                 PlaceStatement(nameFromHash(localIndex), value as SqlStatement);
+            } 
+            else if(value is object[])
+            {
+                PlaceParameter(localIndex, SqlList.CommaValues(value as object[]));
             }
             else
             {
@@ -205,11 +209,23 @@ namespace SqlPlace
             return PlaceStatement(globalName, child);
         }
 
-        //public SqlStatement PlaceStatement<T>(string globalName, string sql, T paramObj) where T: class
-        //{
-        //    return PlaceStatement(globalName, sql, Extensions.ExtensionMethods.ExtractProperties(paramObj));
-        //}
-
+        public SqlStatement PlaceStatement(string globalName, string sql, object parameterObject)
+        {
+            if (parameterObject != null)
+            {
+                if (IsPlacable(parameterObject))
+                {
+                    return PlaceStatement(globalName, sql, new object[] { parameterObject });
+                }
+                else
+                {
+                    return PlaceStatement(globalName, sql, Extensions.ExtensionMethods.ExtractProperties(parameterObject));
+                }
+            } else
+            {
+                return PlaceStatement(globalName, sql);
+            }
+        }
 
         #endregion
 
@@ -267,6 +283,7 @@ namespace SqlPlace
         {
             return _dbParameters[globalName].Value;
         }
+
         public CommandInfo Make()
         {
             int paramOffset = 0;
@@ -316,7 +333,7 @@ namespace SqlPlace
                     var child = allNamedStatements[globalName];
                     if (child is SqlStatement)
                     {
-                        var childCmdInfo = (child as SqlStatement).Make(ref paramOffset);
+                        var childCmdInfo = child.Make(ref paramOffset);
                         commandText = commandText.Replace(token, childCmdInfo.CommandText);
                         parameters.AddRange(childCmdInfo.Parameters);
                     }
@@ -375,19 +392,4 @@ namespace SqlPlace
 
     }
 
-    //public class SqlStatement<T> : SqlStatement where T: class
-    //{
-    //    public SqlStatement(string sql, params object[] indexedParameters): base(sql, indexedParameters)
-    //    {
-    //    }
-
-    //    public SqlStatement(string sql, IDictionary<string, object> namedParameters): base(sql, namedParameters)
-    //    {
-    //    }
-
-    //    public SqlStatement(string sql, T paramObj): base(sql, Extensions.ExtensionMethods.ExtractProperties(paramObj))
-    //    {
-    //    }
-
-    //}
 }

@@ -261,9 +261,6 @@ namespace UnitTestProject
             Assert.AreEqual(3, cmd.Parameters["@p4"].Value);
             Assert.AreEqual(5, cmd.Parameters["@p5"].Value);
 
-            q = new SqlStatement("{A}");
-            q.PlaceParameter("A", new SqlStatement("xxx"));
-
             //  the use of list as PlaceStatement indexed parameters
             q = new SqlStatement("select * from T1 where {FILTER}");
             q.PlaceStatement("FILTER", "F1 in ({0}) and F2 in ({1})", SqlList.CommaValues(set1), SqlList.CommaValues(set2));
@@ -322,24 +319,24 @@ namespace UnitTestProject
             Assert.AreEqual("select * from T1 where f1=@p0", cmd.CommandText);
             Assert.AreEqual(1, cmd.Parameters["@p0"].Value);
 
-            // TODO Is it ok to Make without parameter assignment? Just error when ToCommand ? ***
+            var whereIn = new object[] { 20, 30, 40 };
+            q = new SqlStatement("select * from T1 where f1={0} and f2 in ({1})", 10, whereIn);
+            cmd = q.ToCommand();
+            Assert.AreEqual("select * from T1 where f1=@p0 and f2 in (@p1, @p2, @p3)", cmd.CommandText);
+            Assert.AreEqual(10, cmd.Parameters["@p0"].Value);
+            Assert.AreEqual(20, cmd.Parameters["@p1"].Value);
+            Assert.AreEqual(30, cmd.Parameters["@p2"].Value);
+            Assert.AreEqual(40, cmd.Parameters["@p3"].Value);
 
-            // TODO Dont process JSON { }, Escape {{ }} **
+            // TODO Dont process JSON { }, Escape {{ }}
 
             // TODO Clone (for slightly different)
 
             // TODO Data provider specific replacement
 
-            //TODO
-            //Parameters from object's properties ***
-            //More Provider(Revamp the use of DbType) **
-            //Autobox object array to CommaValues ***
-            //Should ParamInfo be object instead of struct
+            // TODO Should ParamInfo be object instead of struct ?
 
-            // object treat ParameterInfo, Statement, value, POCO, Array of ...former
-            // List of ... statement, pureString, value, string and values, assignmentToAValue
-
-         
+            // TODO Should it throw exception on Make if found no parameter assignment ?
 
         }
 
@@ -361,27 +358,8 @@ namespace UnitTestProject
             A.PlaceParameter("B", B);
             B.PlaceParameter("C", C);
             C.PlaceParameter("A", A);
-
-
-            object[] a = default;
-
-            xxx(a);
-
-            // struct int, double, byte, bool, DateTime, DateTimeOffset, Guid
-            // class string, byte[], SqlXml     , POCO, object[]
         }
-
-        class POJO
-        {
-
-        }
-
-        void xxx<T>(T arg) where T : class
-        {
-
-        }
-
-        
+               
     }
 
 }
