@@ -40,7 +40,7 @@ namespace UnitTestProject
 
             // Detailed parameters
             q = new SqlStatement("select * from User where name={3} and create_date={2} and status={1} and update_date={0}",
-                xUpdateDate, xStatus, xCreateDate, new ParameterInfo(xName, SqlDbType.VarChar));
+                xUpdateDate, xStatus, xCreateDate, new ParameterInfo(xName, DbType.AnsiString));
             cmd = q.ToCommand();
             Assert.AreEqual("select * from User where name=@p3 and create_date=@p2 and status=@p1 and update_date=@p0", cmd.CommandText);
             Assert.AreEqual(xName, cmd.Parameters["@p3"].Value);
@@ -54,7 +54,7 @@ namespace UnitTestProject
             q.PlaceParameter(0, xUpdateDate);
             q.PlaceParameter(1, xStatus);
             q.PlaceParameter(2, xCreateDate);
-            q.PlaceParameter(3, new ParameterInfo(xName, SqlDbType.VarChar));
+            q.PlaceParameter(3, new ParameterInfo(xName, DbType.AnsiString));
             cmd = q.ToCommand();
             Assert.AreEqual("select * from User where name=@p3 and create_date=@p2 and status=@p1 and update_date=@p0", cmd.CommandText);
             Assert.AreEqual(xName, cmd.Parameters["@p3"].Value);
@@ -65,7 +65,17 @@ namespace UnitTestProject
 
             // Named (global) parameters
             q = new SqlStatement("select * from User where name={N} and create_date={C} and status={S} and update_date={U}",
-                new Dictionary<string, object> { { "U", xUpdateDate }, { "S", xStatus }, { "C", xCreateDate }, { "N", new ParameterInfo(xName, SqlDbType.VarChar) } });
+                new Dictionary<string, object> { { "U", xUpdateDate }, { "S", xStatus }, { "C", xCreateDate }, { "N", new ParameterInfo(xName, DbType.AnsiString) } });
+            cmd = q.ToCommand();
+            Assert.AreEqual("select * from User where name=@N and create_date=@C and status=@S and update_date=@U", cmd.CommandText);
+            Assert.AreEqual(xName, cmd.Parameters["@N"].Value);
+            Assert.AreEqual(SqlDbType.VarChar, (cmd.Parameters["@N"] as SqlParameter).SqlDbType);
+            Assert.AreEqual(xCreateDate, cmd.Parameters["@C"].Value);
+            Assert.AreEqual(xStatus, cmd.Parameters["@S"].Value);
+            Assert.AreEqual(DBNull.Value, cmd.Parameters["@U"].Value);
+
+            q = new SqlStatement("select * from User where name={N} and create_date={C} and status={S} and update_date={U}",
+                new { U = xUpdateDate, S = xStatus, C = xCreateDate, N = new ParameterInfo(xName, DbType.AnsiString) });
             cmd = q.ToCommand();
             Assert.AreEqual("select * from User where name=@N and create_date=@C and status=@S and update_date=@U", cmd.CommandText);
             Assert.AreEqual(xName, cmd.Parameters["@N"].Value);
@@ -77,7 +87,7 @@ namespace UnitTestProject
             // Placing local and global parameters
             q = new SqlStatement("select * from User where name={N} and create_date={C} and status={0} and update_date={1}", xStatus, xUpdateDate);
             q.PlaceParameter("C", xCreateDate);
-            q.PlaceParameter("N", new ParameterInfo(xName, SqlDbType.VarChar));
+            q.PlaceParameter("N", new ParameterInfo(xName, DbType.AnsiString));
             cmd = q.ToCommand();
             Assert.AreEqual("select * from User where name=@N and create_date=@C and status=@p0 and update_date=@p1", cmd.CommandText);
             Assert.AreEqual(xName, cmd.Parameters["@N"].Value);
@@ -209,8 +219,8 @@ namespace UnitTestProject
             Assert.AreEqual(98, cmd.Parameters["@R"].Value);
 
             // Comma Values
-            object[] set1 = { new ParameterInfo("1", SqlDbType.VarChar), "3", "5" };
-            object[] set2 = { new ParameterInfo(1, SqlDbType.SmallInt), 3, 5 };
+            object[] set1 = { new ParameterInfo("1", DbType.AnsiString), "3", "5" };
+            object[] set2 = { new ParameterInfo(1, DbType.Byte), 3, 5 };
             q = new SqlStatement("select * from T1 where F1 in ({SET1}) and F2 in ({SET2})");
             q.PlaceStatement("SET1", SqlList.CommaValues(set1));
             q.PlaceStatement("SET2", SqlList.CommaValues(set2));
@@ -251,6 +261,9 @@ namespace UnitTestProject
             Assert.AreEqual(3, cmd.Parameters["@p4"].Value);
             Assert.AreEqual(5, cmd.Parameters["@p5"].Value);
 
+            q = new SqlStatement("{A}");
+            q.PlaceParameter("A", new SqlStatement("xxx"));
+
             //  the use of list as PlaceStatement indexed parameters
             q = new SqlStatement("select * from T1 where {FILTER}");
             q.PlaceStatement("FILTER", "F1 in ({0}) and F2 in ({1})", SqlList.CommaValues(set1), SqlList.CommaValues(set2));
@@ -271,7 +284,7 @@ namespace UnitTestProject
             // Store Procedure = Command without {tag} but has named parameter
             q = new SqlStatement("sp_StoreProc") { CommandType = CommandType.StoredProcedure };
             q.PlaceParameter("A", 1);
-            q.PlaceParameter("B", new ParameterInfo(10, SqlDbType.Int) { Direction = ParameterDirection.Output });
+            q.PlaceParameter("B", new ParameterInfo(10, DbType.Int32) { Direction = ParameterDirection.Output });
             cmd = q.ToCommand();
             Assert.AreEqual("sp_StoreProc", cmd.CommandText);
             Assert.AreEqual(CommandType.StoredProcedure, cmd.CommandType);
@@ -288,16 +301,49 @@ namespace UnitTestProject
             Assert.AreEqual(DBNull.Value, cmd.Parameters["@p1"].Value);
             Assert.AreEqual("select * from T1 where f1=null and f2=null", q.PlainText()) ;
 
+            // Place Parameters
+            q = new SqlStatement("select * from T1 where f1={A} and f2={B}");
+            q.PlaceParameters(new Dictionary<string, object>() { { "A", 1 }, { "B", 2 } });
+            cmd = q.ToCommand();
+            Assert.AreEqual("select * from T1 where f1=@A and f2=@B", cmd.CommandText);
+            Assert.AreEqual(1, cmd.Parameters["@A"].Value);
+            Assert.AreEqual(2, cmd.Parameters["@B"].Value);
 
-            // TODO Dont process JSON { }, Escape {{ }}
+            q = new SqlStatement("select * from T1 where f1={A} and f2={B}");
+            q.PlaceParameters(new { A = 1, B = 2 });
+            cmd = q.ToCommand();
+            Assert.AreEqual("select * from T1 where f1=@A and f2=@B", cmd.CommandText);
+            Assert.AreEqual(1, cmd.Parameters["@A"].Value);
+            Assert.AreEqual(2, cmd.Parameters["@B"].Value);
+
+            q = new SqlStatement("select * from T1 where f1={0}");
+            q.PlaceParameters(1);
+            cmd = q.ToCommand();
+            Assert.AreEqual("select * from T1 where f1=@p0", cmd.CommandText);
+            Assert.AreEqual(1, cmd.Parameters["@p0"].Value);
+
+            // TODO Is it ok to Make without parameter assignment? Just error when ToCommand ? ***
+
+            // TODO Dont process JSON { }, Escape {{ }} **
 
             // TODO Clone (for slightly different)
 
             // TODO Data provider specific replacement
 
+            //TODO
+            //Parameters from object's properties ***
+            //More Provider(Revamp the use of DbType) **
+            //Autobox object array to CommaValues ***
+            //Should ParamInfo be object instead of struct
+
+            // object treat ParameterInfo, Statement, value, POCO, Array of ...former
+            // List of ... statement, pureString, value, string and values, assignmentToAValue
+
+         
+
         }
 
-        [TestMethod]
+    [TestMethod]
         [ExpectedException(typeof(ArgumentException), "Unable to place to itself")]
         public void TestSelfPlace()
         {
@@ -315,6 +361,24 @@ namespace UnitTestProject
             A.PlaceParameter("B", B);
             B.PlaceParameter("C", C);
             C.PlaceParameter("A", A);
+
+
+            object[] a = default;
+
+            xxx(a);
+
+            // struct int, double, byte, bool, DateTime, DateTimeOffset, Guid
+            // class string, byte[], SqlXml     , POCO, object[]
+        }
+
+        class POJO
+        {
+
+        }
+
+        void xxx<T>(T arg) where T : class
+        {
+
         }
 
         

@@ -9,7 +9,7 @@ namespace SqlPlace.Factories
     {
         DbCommand CreateCommand();
 
-        DbParameter CreateParameter(string name, object value, SqlDbType? sqlDbType, int? size, ParameterDirection? direction);
+        DbParameter CreateParameter(string name, object value, DbType? dbType, int? size, ParameterDirection? direction);
 
         DbDataAdapter CreateDataAdapter();
 

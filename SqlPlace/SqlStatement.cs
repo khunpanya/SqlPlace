@@ -23,6 +23,32 @@ namespace SqlPlace
             PlaceParameters(namedParameters);
         }
 
+        public SqlStatement(string sql, object parameterObject)
+        {
+            _sql = sql;
+            if ( parameterObject != null )
+            {
+                if (IsPlacable(parameterObject))
+                {
+                    PlaceParameters(new object[] { parameterObject });
+                }
+                else
+                {
+                    PlaceParameters(Extensions.ExtensionMethods.ExtractProperties(parameterObject));
+                }
+            }
+        }
+
+        internal bool IsPlacable(object obj)
+        {
+            if (obj.GetType().IsValueType) return true;
+            if (obj is string) return true;
+            if (obj is byte[]) return true;
+            if (obj is ParameterInfo) return true;
+            if (obj is SqlStatement) return true;
+            return false;
+        }
+
         #region "Indexed Parameters"
         protected Dictionary<int, ParameterInfo> _indexedParameters = new Dictionary<int, ParameterInfo>();
         internal ParameterInfo[] IndexedParameters()
@@ -57,7 +83,7 @@ namespace SqlPlace
             }
         }
 
-        public void PlaceParameters(object[] indexedParameters)
+        public void PlaceParameters(params object[] indexedParameters)
         {
             for (int i = 0; i < indexedParameters.Length; i++)
                 PlaceParameter(i, indexedParameters[i]);
@@ -112,6 +138,21 @@ namespace SqlPlace
             foreach (string globalName in namedParameters.Keys)
                 PlaceParameter(globalName, namedParameters[globalName]);
         }
+
+        public void PlaceParameters(object parameterObject)
+        {
+            if (parameterObject != null)
+            {
+                if (IsPlacable(parameterObject))
+                {
+                    PlaceParameters(new object[] { parameterObject });
+                }
+                else
+                {
+                    PlaceParameters(Extensions.ExtensionMethods.ExtractProperties(parameterObject));
+                }
+            }
+        }
         #endregion
 
         #region "Nested Statements"
@@ -164,6 +205,12 @@ namespace SqlPlace
             return PlaceStatement(globalName, child);
         }
 
+        //public SqlStatement PlaceStatement<T>(string globalName, string sql, T paramObj) where T: class
+        //{
+        //    return PlaceStatement(globalName, sql, Extensions.ExtensionMethods.ExtractProperties(paramObj));
+        //}
+
+
         #endregion
 
         #region "DbCommand"
@@ -206,7 +253,7 @@ namespace SqlPlace
             {
                 var pValue = param.Value;
                 if (pValue == null) pValue = DBNull.Value;
-                var parameter = CommandFactory.CreateParameter(param.ParameterName, pValue, param.SqlDbType, param.Size, param.Direction);
+                var parameter = CommandFactory.CreateParameter(param.ParameterName, pValue, param.DbType, param.Size, param.Direction);
                 cmd.Parameters.Add(parameter);
                 if (param._globalName != null)
                     _dbParameters.Add(param._globalName, parameter);
@@ -327,4 +374,20 @@ namespace SqlPlace
         #endregion
 
     }
+
+    //public class SqlStatement<T> : SqlStatement where T: class
+    //{
+    //    public SqlStatement(string sql, params object[] indexedParameters): base(sql, indexedParameters)
+    //    {
+    //    }
+
+    //    public SqlStatement(string sql, IDictionary<string, object> namedParameters): base(sql, namedParameters)
+    //    {
+    //    }
+
+    //    public SqlStatement(string sql, T paramObj): base(sql, Extensions.ExtensionMethods.ExtractProperties(paramObj))
+    //    {
+    //    }
+
+    //}
 }
