@@ -93,7 +93,7 @@ namespace SqlPlace.Extensions
         }
 
         [DebuggerStepThrough()]
-        public static IEnumerable<T> ExecuteToObjects<T>(this DbConnection conn, SqlStatement q, DbTransaction transaction = null) where T: new()
+        public static IEnumerable<T> ExecuteToObjects<T>(this DbConnection conn, SqlStatement q, DbTransaction transaction = null) where T: class, new()
         {
             string[] propNames = typeof(T).GetProperties().Select(p => p.Name).ToArray();
             IDataReader rdr = ExecuteReader(conn, q, transaction);
@@ -161,7 +161,7 @@ namespace SqlPlace.Extensions
 
 
         [DebuggerStepThrough()]
-        public static IDictionary<string, object> ExtractProperties<T>(this T obj, params string[] propertyNames)
+        public static IDictionary<string, object> ExtractProperties<T>(this T obj, params string[] propertyNames) where T: class
         {
             var result = new Dictionary<string, object>();
             if (propertyNames == null) propertyNames = new string[] { };
