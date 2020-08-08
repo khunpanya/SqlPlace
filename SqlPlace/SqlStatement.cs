@@ -70,6 +70,7 @@ namespace SqlPlace
             } 
             else if(value is object[])
             {
+                // Change values array to SqlList
                 PlaceParameter(localIndex, SqlList.CommaValues(value as object[]));
             }
             else
