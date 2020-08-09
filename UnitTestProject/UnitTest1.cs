@@ -15,19 +15,18 @@ namespace UnitTestProject
     [TestClass]
     public class UnitTest1
     {
+        SqlStatement q;
+        DbCommand cmd;
+
+        string xName = "John";
+        DateTime xCreateDate = new DateTime(2010, 1, 3);
+        int xStatus = 3;
+        DateTime? xUpdateDate = null;
 
         [TestMethod]
-        public void TestMethod1()
+        public void TestConstructor()
         {
-            SqlStatement q;
-            DbCommand cmd;
-
-            string xName = "John";
-            DateTime xCreateDate = new DateTime(2010, 1, 3);
-            int xStatus = 3;
-            DateTime? xUpdateDate = null;
-
-            // Basic usage
+            // Basic Usage
             q = new SqlStatement("select * from User where name={3} and create_date={2} and status={1} and update_date={0}",
                 xUpdateDate, xStatus, xCreateDate, xName);
             cmd = q.ToCommand();
@@ -49,6 +48,32 @@ namespace UnitTestProject
             Assert.AreEqual(xStatus, cmd.Parameters["@p1"].Value);
             Assert.AreEqual(DBNull.Value, cmd.Parameters["@p0"].Value);
 
+            // Named (global) parameters
+            q = new SqlStatement("select * from User where name={N} and create_date={C} and status={S} and update_date={U}",
+                new Dictionary<string, object> { { "U", xUpdateDate }, { "S", xStatus }, { "C", xCreateDate }, { "N", new ParameterInfo(xName, DbType.AnsiString) } });
+            cmd = q.ToCommand();
+            Assert.AreEqual("select * from User where name=@N and create_date=@C and status=@S and update_date=@U", cmd.CommandText);
+            Assert.AreEqual(xName, cmd.Parameters["@N"].Value);
+            Assert.AreEqual(SqlDbType.VarChar, (cmd.Parameters["@N"] as SqlParameter).SqlDbType);
+            Assert.AreEqual(xCreateDate, cmd.Parameters["@C"].Value);
+            Assert.AreEqual(xStatus, cmd.Parameters["@S"].Value);
+            Assert.AreEqual(DBNull.Value, cmd.Parameters["@U"].Value);
+
+            // Named parameter from object's properties
+            q = new SqlStatement("select * from User where name={N} and create_date={C} and status={S} and update_date={U}",
+                new { U = xUpdateDate, S = xStatus, C = xCreateDate, N = new ParameterInfo(xName, DbType.AnsiString) });
+            cmd = q.ToCommand();
+            Assert.AreEqual("select * from User where name=@N and create_date=@C and status=@S and update_date=@U", cmd.CommandText);
+            Assert.AreEqual(xName, cmd.Parameters["@N"].Value);
+            Assert.AreEqual(SqlDbType.VarChar, (cmd.Parameters["@N"] as SqlParameter).SqlDbType);
+            Assert.AreEqual(xCreateDate, cmd.Parameters["@C"].Value);
+            Assert.AreEqual(xStatus, cmd.Parameters["@S"].Value);
+            Assert.AreEqual(DBNull.Value, cmd.Parameters["@U"].Value);
+        }
+
+        [TestMethod]
+        public void TestPlaceParameter()
+        {
             // Placing local parameters individually
             q = new SqlStatement("select * from User where name={3} and create_date={2} and status={1} and update_date={0}");
             q.PlaceParameter(0, xUpdateDate);
@@ -63,27 +88,6 @@ namespace UnitTestProject
             Assert.AreEqual(xStatus, cmd.Parameters["@p1"].Value);
             Assert.AreEqual(DBNull.Value, cmd.Parameters["@p0"].Value);
 
-            // Named (global) parameters
-            q = new SqlStatement("select * from User where name={N} and create_date={C} and status={S} and update_date={U}",
-                new Dictionary<string, object> { { "U", xUpdateDate }, { "S", xStatus }, { "C", xCreateDate }, { "N", new ParameterInfo(xName, DbType.AnsiString) } });
-            cmd = q.ToCommand();
-            Assert.AreEqual("select * from User where name=@N and create_date=@C and status=@S and update_date=@U", cmd.CommandText);
-            Assert.AreEqual(xName, cmd.Parameters["@N"].Value);
-            Assert.AreEqual(SqlDbType.VarChar, (cmd.Parameters["@N"] as SqlParameter).SqlDbType);
-            Assert.AreEqual(xCreateDate, cmd.Parameters["@C"].Value);
-            Assert.AreEqual(xStatus, cmd.Parameters["@S"].Value);
-            Assert.AreEqual(DBNull.Value, cmd.Parameters["@U"].Value);
-
-            q = new SqlStatement("select * from User where name={N} and create_date={C} and status={S} and update_date={U}",
-                new { U = xUpdateDate, S = xStatus, C = xCreateDate, N = new ParameterInfo(xName, DbType.AnsiString) });
-            cmd = q.ToCommand();
-            Assert.AreEqual("select * from User where name=@N and create_date=@C and status=@S and update_date=@U", cmd.CommandText);
-            Assert.AreEqual(xName, cmd.Parameters["@N"].Value);
-            Assert.AreEqual(SqlDbType.VarChar, (cmd.Parameters["@N"] as SqlParameter).SqlDbType);
-            Assert.AreEqual(xCreateDate, cmd.Parameters["@C"].Value);
-            Assert.AreEqual(xStatus, cmd.Parameters["@S"].Value);
-            Assert.AreEqual(DBNull.Value, cmd.Parameters["@U"].Value);
-
             // Placing local and global parameters
             q = new SqlStatement("select * from User where name={N} and create_date={C} and status={0} and update_date={1}", xStatus, xUpdateDate);
             q.PlaceParameter("C", xCreateDate);
@@ -95,8 +99,39 @@ namespace UnitTestProject
             Assert.AreEqual(xCreateDate, cmd.Parameters["@C"].Value);
             Assert.AreEqual(xStatus, cmd.Parameters["@p0"].Value);
             Assert.AreEqual(DBNull.Value, cmd.Parameters["@p1"].Value);
+        }
 
-            // Placing Sub (Nested query)
+        [TestMethod]
+        public void TestPlaceParameters()
+        {
+            // Dictionry
+            q = new SqlStatement("select * from T1 where f1={A} and f2={B}");
+            q.PlaceParameters(new Dictionary<string, object>() { { "A", 1 }, { "B", 2 } });
+            cmd = q.ToCommand();
+            Assert.AreEqual("select * from T1 where f1=@A and f2=@B", cmd.CommandText);
+            Assert.AreEqual(1, cmd.Parameters["@A"].Value);
+            Assert.AreEqual(2, cmd.Parameters["@B"].Value);
+
+            // Paremeter object
+            q = new SqlStatement("select * from T1 where f1={A} and f2={B}");
+            q.PlaceParameters(new { A = 1, B = 2 });
+            cmd = q.ToCommand();
+            Assert.AreEqual("select * from T1 where f1=@A and f2=@B", cmd.CommandText);
+            Assert.AreEqual(1, cmd.Parameters["@A"].Value);
+            Assert.AreEqual(2, cmd.Parameters["@B"].Value);
+
+            // One value parameter should not be confused with one parameter object
+            q = new SqlStatement("select * from T1 where f1={0}");
+            q.PlaceParameters(1);
+            cmd = q.ToCommand();
+            Assert.AreEqual("select * from T1 where f1=@p0", cmd.CommandText);
+            Assert.AreEqual(1, cmd.Parameters["@p0"].Value);
+        }
+
+        [TestMethod]
+        public void TestPlaceStatement()
+        {
+            // Placing nested query
             q = new SqlStatement("select * from User where name={N} and create_date={C} and {MORE}");
             q.PlaceStatement("MORE", "status={0} and update_date={1}", xStatus, xUpdateDate);
             q.PlaceParameter("C", xCreateDate);
@@ -133,7 +168,12 @@ namespace UnitTestProject
             Assert.AreEqual(xCreateDate, cmd.Parameters["@p1"].Value);
             Assert.AreEqual(xStatus, cmd.Parameters["@S"].Value);
             Assert.AreEqual(DBNull.Value, cmd.Parameters["@U"].Value);
+        }
 
+        [TestMethod]
+        public void TestParameterOrder()
+        {
+            // Preorder Traversal Statement placing
             q = new SqlStatement("{A}-{1}-{0}-{MORE1}-{B}-{MORE2}", 10, 11);
             q.PlaceStatement("MORE1", "({0}+{A}+{B}+{1}+{MORE3})", 21, 22);
             q.PlaceStatement("MORE2", "({MORE3}*{0}*{C})", 31);
@@ -155,7 +195,14 @@ namespace UnitTestProject
             Assert.AreEqual(41, cmd.Parameters["@p4"].Value);
             Assert.AreEqual(31, cmd.Parameters["@p5"].Value);
             Assert.AreEqual(41, cmd.Parameters["@p6"].Value);
+        }
 
+        object[] set1 = { new ParameterInfo("1", DbType.AnsiString), "3", "5" };
+        object[] set2 = { new ParameterInfo(1, DbType.Byte), 3, 5 };
+
+        [TestMethod]
+        public void TestList()
+        {
             // Place list
             q = new SqlStatement("select * from User where {CONDS}");
             var cond = q.PlaceStatement("CONDS", new SqlList(" and ", "(1=1)")) as SqlList;
@@ -190,7 +237,7 @@ namespace UnitTestProject
             Assert.AreEqual(xStatus, cmd.Parameters["@p2"].Value);
             Assert.AreEqual(DBNull.Value, cmd.Parameters["@p3"].Value);
 
-            // Relative token in collection, Absolute token in collection
+            // Local & global token in collection
             var fields = new Dictionary<string, object>() { { "name={0}", "AAA" }, { "gender={0}", 1 } };
             var conditions = new Dictionary<string, object>() { { "section={0}", 2 }, { "status={0}", 3 }, { "region=@R", 99 }, { "country='TH'", null } };
             q = new SqlStatement("update Table1 set {FLDS} where {CONDS}");
@@ -219,8 +266,6 @@ namespace UnitTestProject
             Assert.AreEqual(98, cmd.Parameters["@R"].Value);
 
             // Comma Values
-            object[] set1 = { new ParameterInfo("1", DbType.AnsiString), "3", "5" };
-            object[] set2 = { new ParameterInfo(1, DbType.Byte), 3, 5 };
             q = new SqlStatement("select * from T1 where F1 in ({SET1}) and F2 in ({SET2})");
             q.PlaceStatement("SET1", SqlList.CommaValues(set1));
             q.PlaceStatement("SET2", SqlList.CommaValues(set2));
@@ -232,8 +277,12 @@ namespace UnitTestProject
             Assert.AreEqual(1, cmd.Parameters["@p3"].Value);
             Assert.AreEqual(3, cmd.Parameters["@p4"].Value);
             Assert.AreEqual(5, cmd.Parameters["@p5"].Value);
+        }
 
-            // You can even place query instead of parameter
+        [TestMethod]
+        public void TestPlaceStatementInParameter()
+        {
+            // Place subquery instead of parameter
             q = new SqlStatement("select * from T1 where F1 in ({0}) and F2 in ({X})", SqlList.CommaValues(set1));
             q.PlaceParameter("X", SqlList.CommaValues(set2));
             cmd = q.ToCommand();
@@ -274,10 +323,19 @@ namespace UnitTestProject
             Assert.AreEqual(1, cmd.Parameters["@p3"].Value);
             Assert.AreEqual(3, cmd.Parameters["@p4"].Value);
             Assert.AreEqual(5, cmd.Parameters["@p5"].Value);
+        }
 
-            // ToString
+        [TestMethod]
+        public void TestPlainText()
+        {
+            q = new SqlStatement("select * from T1 where {FILTER}");
+            q.PlaceStatement("FILTER", "F1 in ({0}) and F2 in ({1})", SqlList.CommaValues(set1), SqlList.CommaValues(set2));
             Assert.AreEqual("select * from T1 where F1 in ('1', '3', '5') and F2 in (1, 3, 5)", q.PlainText());
+        }
 
+        [TestMethod]
+        public void TestStoreProcedureCommand()
+        {
             // Store Procedure = Command without {tag} but has named parameter
             q = new SqlStatement("sp_StoreProc") { CommandType = CommandType.StoredProcedure };
             q.PlaceParameter("A", 1);
@@ -289,36 +347,23 @@ namespace UnitTestProject
             Assert.AreEqual(ParameterDirection.Input, cmd.Parameters["@A"].Direction);
             Assert.AreEqual(10, cmd.Parameters["@B"].Value);
             Assert.AreEqual(ParameterDirection.Output, cmd.Parameters["@B"].Direction);
+        }
 
-            // Null parameter
+        [TestMethod]
+        public void TestNullHandling()
+        {
             q = new SqlStatement("select * from T1 where f1={0} and f2={1}", null, DBNull.Value);
             cmd = q.ToCommand();
             Assert.AreEqual("select * from T1 where f1=@p0 and f2=@p1", cmd.CommandText);
             Assert.AreEqual(DBNull.Value, cmd.Parameters["@p0"].Value);
             Assert.AreEqual(DBNull.Value, cmd.Parameters["@p1"].Value);
-            Assert.AreEqual("select * from T1 where f1=null and f2=null", q.PlainText()) ;
+            Assert.AreEqual("select * from T1 where f1=null and f2=null", q.PlainText());
+        }
 
-            // Place Parameters
-            q = new SqlStatement("select * from T1 where f1={A} and f2={B}");
-            q.PlaceParameters(new Dictionary<string, object>() { { "A", 1 }, { "B", 2 } });
-            cmd = q.ToCommand();
-            Assert.AreEqual("select * from T1 where f1=@A and f2=@B", cmd.CommandText);
-            Assert.AreEqual(1, cmd.Parameters["@A"].Value);
-            Assert.AreEqual(2, cmd.Parameters["@B"].Value);
-
-            q = new SqlStatement("select * from T1 where f1={A} and f2={B}");
-            q.PlaceParameters(new { A = 1, B = 2 });
-            cmd = q.ToCommand();
-            Assert.AreEqual("select * from T1 where f1=@A and f2=@B", cmd.CommandText);
-            Assert.AreEqual(1, cmd.Parameters["@A"].Value);
-            Assert.AreEqual(2, cmd.Parameters["@B"].Value);
-
-            q = new SqlStatement("select * from T1 where f1={0}");
-            q.PlaceParameters(1);
-            cmd = q.ToCommand();
-            Assert.AreEqual("select * from T1 where f1=@p0", cmd.CommandText);
-            Assert.AreEqual(1, cmd.Parameters["@p0"].Value);
-
+        [TestMethod]
+        public void TestPlaceArrayInParameter()
+        {
+            // Auto-boxing array to list
             var whereIn = new object[] { 20, 30, 40 };
             q = new SqlStatement("select * from T1 where f1={0} and f2 in ({1})", 10, whereIn);
             cmd = q.ToCommand();
@@ -328,19 +373,21 @@ namespace UnitTestProject
             Assert.AreEqual(30, cmd.Parameters["@p2"].Value);
             Assert.AreEqual(40, cmd.Parameters["@p3"].Value);
 
+        }
+
+        [TestMethod]
+        public void TestMethodTodo()
+        {
             // TODO Dont process JSON { }, Escape {{ }}
 
             // TODO Clone (for slightly different)
 
             // TODO Data provider specific replacement
 
-            // TODO Should ParamInfo be object instead of struct ?
-
             // TODO Should it throw exception on Make if found no parameter assignment ?
-
         }
 
-    [TestMethod]
+        [TestMethod]
         [ExpectedException(typeof(ArgumentException), "Unable to place to itself")]
         public void TestSelfPlace()
         {
@@ -359,7 +406,125 @@ namespace UnitTestProject
             B.PlaceParameter("C", C);
             C.PlaceParameter("A", A);
         }
-               
+
+        private class POCO
+        {
+            public int Field1 { get; set; }
+            public string Field2 { get; set; }
+            public DateTime? Field3 { get; set; }
+        }
+
+        [TestMethod]
+        public void TestExecute()
+        {
+            // To run this test, Add app.config with ConnString
+            string connString;
+            try
+            {
+                connString = System.Configuration.ConfigurationManager.ConnectionStrings["ConnString"].ConnectionString;
+            }catch
+            {
+                return;
+            }
+            using (var conn = new System.Data.SqlClient.SqlConnection(connString))
+            {
+                conn.Open();
+                var trans = conn.BeginTransaction();
+
+                var q = new SqlStatement("create table #Test(Field1 int, Field2 varchar(50), Field3 datetime)");
+                conn.ExecuteNonQuery(q, trans);
+
+                var o1 = new POCO { Field1 = 1, Field2 = "AA", Field3 = new DateTime(2019, 8, 8) };
+                var o2 = new POCO { Field1 = 2, Field2 = "BB", Field3 = new DateTime(2020, 8, 8) };
+                var o3 = new POCO { Field1 = 3, Field2 = "CC", Field3 = new DateTime(2021, 8, 8) };
+                q = new SqlStatement("insert into #Test values({Field1}, {Field2}, {Field3})");
+                q.PlaceParameters(o1);
+                Assert.AreEqual(1, conn.ExecuteNonQuery(q, trans));
+                q.PlaceParameters(o2);
+                Assert.AreEqual(1, conn.ExecuteNonQuery(q, trans));
+                q.PlaceParameters(o3);
+                Assert.AreEqual(1, conn.ExecuteNonQuery(q, trans));
+
+                q = new SqlStatement("select Field2 from #Test where Field1={0}");
+                q.PlaceParameter(0, 1);
+                Assert.AreEqual("AA", conn.ExecuteScalar(q, trans));
+                q.PlaceParameter(0, 3);
+                Assert.AreEqual("CC", conn.ExecuteScalar(q, trans));
+
+                q = new SqlStatement("select * from #Test where Field1 > 1 order by Field1");
+                using (var rdr = conn.ExecuteReader(q, trans))
+                {
+                    rdr.Read();
+                    Assert.AreEqual("BB", rdr.GetString(1));
+                    rdr.Read();
+                    Assert.AreEqual("CC", rdr.GetString(1));
+                    rdr.Close();
+                };
+
+                var dt = new DataTable();
+                q = new SqlStatement("select * from #Test");
+                conn.ExecuteFill(ref dt, q, trans);
+                Assert.AreEqual(3, dt.Rows.Count);
+
+                dt = conn.ExecuteToDataTable(q, trans);
+                Assert.AreEqual(3, dt.Rows.Count);
+
+                q = new SqlStatement("select Field3 from #Test");
+                var dates = conn.ExecuteToValues<DateTime>(q, trans).ToArray();
+                Assert.AreEqual(new DateTime(2019, 8, 8), dates[0]);
+                Assert.AreEqual(new DateTime(2020, 8, 8), dates[1]);
+                Assert.AreEqual(new DateTime(2021, 8, 8), dates[2]);
+                conn.ExecuteNonQuery(new SqlStatement("update #Test set Field3=null where Field1={0}", 2), trans);
+                var ndates = conn.ExecuteToValues<DateTime?>(q, trans).ToArray();
+                Assert.AreEqual(new DateTime(2019, 8, 8), ndates[0]);
+                Assert.IsNull(ndates[1]);
+                Assert.AreEqual(new DateTime(2021, 8, 8), ndates[2]);
+
+                q = new SqlStatement("select Field2 from #Test");
+                var strings = conn.ExecuteToValues<string>(q, trans).ToArray();
+                Assert.AreEqual("AA", strings[0]);
+                Assert.AreEqual("BB", strings[1]);
+                Assert.AreEqual("CC", strings[2]);
+                conn.ExecuteNonQuery(new SqlStatement("update #Test set Field2=null where Field1={0}", 2), trans);
+                strings = conn.ExecuteToValues<string>(q, trans).ToArray();
+                Assert.AreEqual("AA", strings[0]);
+                Assert.IsNull(strings[1]);
+                Assert.AreEqual("CC", strings[2]);
+
+                q = new SqlStatement("select * from #Test");
+                var pocos = conn.ExecuteToObjects<POCO>(q, trans).ToArray();
+                Assert.AreEqual(1, pocos[0].Field1);
+                Assert.AreEqual(2, pocos[1].Field1);
+                Assert.AreEqual(3, pocos[2].Field1);
+
+                var dyns = conn.ExecuteToDictionaries(q, trans).ToArray();
+                Assert.AreEqual(1, dyns[0]["Field1"]);
+                Assert.AreEqual(2, dyns[1]["Field1"]);
+                Assert.AreEqual(3, dyns[2]["Field1"]);
+
+                q = new SqlStatement(@"CREATE PROCEDURE [StoreProcedure1] @pinput int, @poutput varchar(50) OUTPUT
+AS BEGIN select @poutput = '(('+convert(varchar, @pinput)+'))';  return 31; END");
+                conn.ExecuteNonQuery(q, trans);
+
+                q = new SqlStatement("StoreProcedure1");
+                q.CommandType = CommandType.StoredProcedure;
+                q.PlaceParameter("pinput", 123);
+                q.PlaceParameter("poutput", new ParameterInfo() { DbType = DbType.AnsiString, Size = 50, Direction = ParameterDirection.Output });
+                q.PlaceParameter("preturn", new ParameterInfo() { DbType = DbType.Int32, Direction = ParameterDirection.ReturnValue });
+                conn.ExecuteNonQuery(q, trans);
+                var inputValue = q.ParameterValue("pinput");
+                var outputValue = q.ParameterValue("poutput");
+                var returnValue = q.ParameterValue("preturn");
+
+                conn.ExecuteNonQuery(new SqlStatement("drop procedure [StoreProcedure1]"), trans);
+
+                conn.ExecuteNonQuery(new SqlStatement("drop table #Test"), trans);
+
+                trans.Rollback();
+
+            }
+        }
+
     }
 
 }
