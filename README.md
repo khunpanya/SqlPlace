@@ -71,18 +71,26 @@ q.PlaceParameters(new Dictionary<string, object>() { { "AA", 10 }, { "BB", "A" }
 // @AA = 10, @BB = 'A'
 ```
 
+Use object's properties for parameter assignment is also possible.
+```csharp
+var q = new SqlStatement("select * from Table1 where f1={AA} and f2={BB}");
+q.PlaceParameters(new { AA = 10, BB = "A" });
+// "select * from Table1 where f1=@AA and f2=@BB"
+// @AA = 10, @BB = 'A'
+```
+
 # Templating
 ## Nested statement
-You can place SqlStatement object itself into braces. It won't be interpreted as parameter but that SQL will be nested inside.
+You can place SqlStatement object itself into braces. It won't be treated as parameter but that SQL will be nested inside.
 This will enable you to build a more dynamic query.\
-Note that named parameters are globally recognized throughout every connected statements.
+Note that named parameters and statements are globally recognized throughout every connected statements.
 ```csharp
 var q = new SqlStatement("select * from ({SRC}) t1 where {CONDS}");
 var qsrc = new SqlStatement("select * from View1");
 var qconds = new SqlStatement("f1={AA} and f2={BB}");
 q.PlaceStatement("SRC", qsrc);
 q.PlaceStatement("CONDS", qconds);
-q.PlaceParameters(new Dictionary<string, object>() { { "AA", 10 }, { "BB", "A" } });
+q.PlaceParameters(new { AA = 10, BB = "A" });
 // "select * from (select * from View1) t1 where f1=@AA and f2=@BB"
 // @AA = 10, @BB = 'A'
 ```
@@ -219,9 +227,14 @@ var dict3 = ExtensionMethods.ExtractProperties(dynamicObject, "f1", "f2");
 
 To specify database type for a parameter.
 ```csharp
-var q = new SqlStatement("select * from Table1 where f1={0} and f2={1}", 10, new ParameterInfo("A", SqlDbType.VarChar));
-// "select * from Table1 where f1=@p0 and f2=@p1"
-// @p0 = 10, @p1 = 'A' (ANSI string)
+var dateValue = new DateTime(1970, 1, 1);
+q = new SqlStatement("{0}, {1}, {2}", 
+    dateValue, 
+    new ParameterInfo(dateValue, DbType.DateTime2), 
+    new ParameterInfo(dateValue) { SpecificDbType = (int)SqlDbType.SmallDateTime });
+// @p0 = '1970-01-01' (datetime)
+// @p1 = '1970-01-01' (datetime2)
+// @p2 = '1970-01-01' (smalldatetime)
 ```
 
 To run store procedure with output values
@@ -229,8 +242,8 @@ To run store procedure with output values
 var q = new SqlStatement("StoreProcedure1");
 q.CommandType = CommandType.StoredProcedure;
 q.PlaceParameter("pinput", 123);
-q.PlaceParameter("poutput", new ParameterInfo() { SqlDbType = SqlDbType.VarChar, Size = 50, Direction = ParameterDirection.Output });
-q.PlaceParameter("preturn", new ParameterInfo() { SqlDbType = SqlDbType.Int, Direction = ParameterDirection.ReturnValue });
+q.PlaceParameter("poutput", new ParameterInfo() { DbType = DbType.AnsiString, Size = 50, Direction = ParameterDirection.Output });
+q.PlaceParameter("preturn", new ParameterInfo() { DbType = DbType.Int32, Direction = ParameterDirection.ReturnValue });
 conn.ExecuteNonQuery(q, trans);
 var inputValue = q.ParameterValue("pinput");
 var outputValue = q.ParameterValue("poutput");

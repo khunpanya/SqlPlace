@@ -378,14 +378,15 @@ namespace UnitTestProject
         [TestMethod]
         public void TestSpecificDbType()
         {
+            var dateValue = new DateTime(1970, 1, 1);
             q = new SqlStatement("{0}, {1}, {2}", 
-                xCreateDate, 
-                new ParameterInfo(xCreateDate, DbType.DateTime2), 
-                new ParameterInfo(xCreateDate) { SpecificDbType = (int)SqlDbType.SmallDateTime });
+                dateValue, 
+                new ParameterInfo(dateValue, DbType.DateTime2), 
+                new ParameterInfo(dateValue) { SpecificDbType = (int)SqlDbType.SmallDateTime });
             cmd = q.ToCommand();
-            Assert.AreEqual(xCreateDate, cmd.Parameters["@p0"].Value);
-            Assert.AreEqual(xCreateDate, cmd.Parameters["@p1"].Value);
-            Assert.AreEqual(xCreateDate, cmd.Parameters["@p2"].Value);
+            Assert.AreEqual(dateValue, cmd.Parameters["@p0"].Value);
+            Assert.AreEqual(dateValue, cmd.Parameters["@p1"].Value);
+            Assert.AreEqual(dateValue, cmd.Parameters["@p2"].Value);
             Assert.AreEqual(SqlDbType.DateTime, (cmd.Parameters["@p0"] as SqlParameter).SqlDbType);
             Assert.AreEqual(SqlDbType.DateTime2, (cmd.Parameters["@p1"] as SqlParameter).SqlDbType);
             Assert.AreEqual(SqlDbType.SmallDateTime, (cmd.Parameters["@p2"] as SqlParameter).SqlDbType);
@@ -401,6 +402,14 @@ namespace UnitTestProject
             // TODO Data provider specific replacement
 
             // TODO Should it throw exception on Make if found no parameter assignment ?
+
+            var q = new SqlStatement("select * from ({SRC}) t1 where {CONDS}");
+            var qsrc = new SqlStatement("select * from View1");
+            var qconds = new SqlStatement("f1={AA} and f2={BB}");
+            q.PlaceStatement("SRC", qsrc);
+            q.PlaceStatement("CONDS", qconds);
+            q.PlaceParameters(new { AA = 10, BB = "A" });
+
         }
 
         [TestMethod]
