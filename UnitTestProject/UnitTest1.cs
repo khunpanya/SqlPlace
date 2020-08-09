@@ -376,6 +376,22 @@ namespace UnitTestProject
         }
 
         [TestMethod]
+        public void TestSpecificDbType()
+        {
+            q = new SqlStatement("{0}, {1}, {2}", 
+                xCreateDate, 
+                new ParameterInfo(xCreateDate, DbType.DateTime2), 
+                new ParameterInfo(xCreateDate) { SpecificDbType = (int)SqlDbType.SmallDateTime });
+            cmd = q.ToCommand();
+            Assert.AreEqual(xCreateDate, cmd.Parameters["@p0"].Value);
+            Assert.AreEqual(xCreateDate, cmd.Parameters["@p1"].Value);
+            Assert.AreEqual(xCreateDate, cmd.Parameters["@p2"].Value);
+            Assert.AreEqual(SqlDbType.DateTime, (cmd.Parameters["@p0"] as SqlParameter).SqlDbType);
+            Assert.AreEqual(SqlDbType.DateTime2, (cmd.Parameters["@p1"] as SqlParameter).SqlDbType);
+            Assert.AreEqual(SqlDbType.SmallDateTime, (cmd.Parameters["@p2"] as SqlParameter).SqlDbType);
+        }
+
+        [TestMethod]
         public void TestMethodTodo()
         {
             // TODO Dont process JSON { }, Escape {{ }}

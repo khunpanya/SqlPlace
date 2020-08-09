@@ -1,33 +1,44 @@
-﻿using System.Data;
+﻿using System;
+using System.Data;
 using System.Data.Common;
+using System.Reflection;
 
 namespace SqlPlace.Factories
 {
-    public class GenericCommandFactory<TCommand, TParameter, TDataAdapter> : ICommandFactory 
-        where TCommand: DbCommand, new() 
-        where TParameter: DbParameter, new()
-        where TDataAdapter : DbDataAdapter, new()
+    public class GenericCommandFactory<TDbProviderFactory> : ICommandFactory where TDbProviderFactory : DbProviderFactory
     {
+        private DbProviderFactory _factoryInstance;
+        private DbProviderFactory FactoryInstance
+        {
+            get
+            {
+                if(_factoryInstance == null)
+                {
+                    var fieldInfo = typeof(TDbProviderFactory).GetField("Instance", BindingFlags.Public | BindingFlags.Static | BindingFlags.GetField);
+                    _factoryInstance = fieldInfo.GetValue(null) as DbProviderFactory;
+                }
+                return _factoryInstance;
+            }
+        }
 
         public DbCommand CreateCommand()
         {
-            return new TCommand();
+            return FactoryInstance.CreateCommand();
         }
 
-        public DbParameter CreateParameter(string name, object value, DbType? dbType, int? size, ParameterDirection? direction)
+        public DbParameter CreateParameter()
         {
-            var param = new TParameter();
-            param.ParameterName = name;
-            param.Value = value;
-            if (dbType.HasValue) param.DbType = dbType.Value;
-            if (size.HasValue) param.Size = size.Value;
-            if (direction.HasValue) param.Direction = direction.Value;
-            return param;
+            return FactoryInstance.CreateParameter();
+        }
+
+        public virtual void SetSpecificDbType(DbParameter parameter, int specificDbType)
+        {
+
         }
 
         public DbDataAdapter CreateDataAdapter()
         {
-            return new TDataAdapter();
+            return FactoryInstance.CreateDataAdapter();
         }
 
         public string ParameterSymbol { get; set; } = "@";

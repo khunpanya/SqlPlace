@@ -8,6 +8,7 @@
             _parameterName = null;
             Value = value;
             DbType = dbType;
+            SpecificDbType = null;
             Size = size;
             Direction = null;
         }
@@ -20,6 +21,11 @@
         public object Value;
 
         public System.Data.DbType? DbType;
+
+        /// <summary>
+        /// To specify enum value of certain DB type such e.g. SqlDbType, OleDbType
+        /// </summary>
+        public int? SpecificDbType;
 
         public int? Size;
 

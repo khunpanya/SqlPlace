@@ -41,10 +41,10 @@ namespace SqlPlace
 
         internal bool IsPlacable(object obj)
         {
+            if (obj is ParameterInfo) return true;
             if (obj.GetType().IsValueType) return true;
             if (obj is string) return true;
             if (obj is byte[]) return true;
-            if (obj is ParameterInfo) return true;
             if (obj is SqlStatement) return true;
             return false;
         }
@@ -270,7 +270,13 @@ namespace SqlPlace
             {
                 var pValue = param.Value;
                 if (pValue == null) pValue = DBNull.Value;
-                var parameter = CommandFactory.CreateParameter(param.ParameterName, pValue, param.DbType, param.Size, param.Direction);
+                var parameter = CommandFactory.CreateParameter();
+                parameter.ParameterName = param.ParameterName;
+                parameter.Value = pValue;
+                if (param.DbType.HasValue) parameter.DbType = param.DbType.Value;
+                if (param.SpecificDbType.HasValue) CommandFactory.SetSpecificDbType(parameter, param.SpecificDbType.Value);
+                if (param.Size.HasValue) parameter.Size = param.Size.Value;
+                if (param.Direction.HasValue) parameter.Direction = param.Direction.Value;
                 cmd.Parameters.Add(parameter);
                 if (param._globalName != null)
                     _dbParameters.Add(param._globalName, parameter);
