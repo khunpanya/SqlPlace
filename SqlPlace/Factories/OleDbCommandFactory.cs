@@ -9,5 +9,10 @@ namespace SqlPlace.Factories
         {
             (parameter as OleDbParameter).OleDbType = (OleDbType)specificDbType;
         }
+
+        public override bool SupportNamedParameter()
+        {
+            return false;
+        }
     }
 }

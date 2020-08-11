@@ -195,6 +195,25 @@ namespace UnitTestProject
             Assert.AreEqual(41, cmd.Parameters["@p4"].Value);
             Assert.AreEqual(31, cmd.Parameters["@p5"].Value);
             Assert.AreEqual(41, cmd.Parameters["@p6"].Value);
+
+            // OLE DB does not support named parameters
+            q.CommandFactory = new SqlPlace.Factories.OleDbCommandFactory();
+            cmd = q.ToCommand();
+            Assert.AreEqual("@p0-@p1-@p2-(@p3+@p4+@p5+@p6+(@p7/@p8))-@p9-((@p10/@p11)*@p12*@p13)", cmd.CommandText);
+            Assert.AreEqual("a", cmd.Parameters["@p0"].Value);
+            Assert.AreEqual(11, cmd.Parameters["@p1"].Value);
+            Assert.AreEqual(10, cmd.Parameters["@p2"].Value);
+            Assert.AreEqual(21, cmd.Parameters["@p3"].Value);
+            Assert.AreEqual("a", cmd.Parameters["@p4"].Value);
+            Assert.AreEqual("b", cmd.Parameters["@p5"].Value);
+            Assert.AreEqual(22, cmd.Parameters["@p6"].Value);
+            Assert.AreEqual("d", cmd.Parameters["@p7"].Value);
+            Assert.AreEqual(41, cmd.Parameters["@p8"].Value);
+            Assert.AreEqual("b", cmd.Parameters["@p9"].Value);
+            Assert.AreEqual("d", cmd.Parameters["@p10"].Value);
+            Assert.AreEqual(41, cmd.Parameters["@p11"].Value);
+            Assert.AreEqual(31, cmd.Parameters["@p12"].Value);
+            Assert.AreEqual("c", cmd.Parameters["@p13"].Value);
         }
 
         object[] set1 = { new ParameterInfo("1", DbType.AnsiString), "3", "5" };

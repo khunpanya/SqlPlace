@@ -41,6 +41,11 @@ namespace SqlPlace.Factories
             return FactoryInstance.CreateDataAdapter();
         }
 
+        public virtual bool SupportNamedParameter()
+        {
+            return true;
+        }
+
         public string ParameterSymbol { get; set; } = "@";
 
         public string GetParameterName(int paramIndex)

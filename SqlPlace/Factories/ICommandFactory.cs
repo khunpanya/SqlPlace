@@ -15,6 +15,8 @@ namespace SqlPlace.Factories
 
         DbDataAdapter CreateDataAdapter();
 
+        bool SupportNamedParameter();
+
         string GetParameterName(int paramIndex);
 
         string GetParameterName(string paramName);

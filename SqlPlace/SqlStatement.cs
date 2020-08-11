@@ -243,6 +243,8 @@ namespace SqlPlace
             set
             {
                 _commandFactory = value;
+                foreach (var statement in AllNamedStatements().Values)
+                    statement.CommandFactory = value;
             }
         }
 
@@ -295,6 +297,24 @@ namespace SqlPlace
         {
             int paramOffset = 0;
             var cmdInfo = Make(ref paramOffset);
+            if(!CommandFactory.SupportNamedParameter())
+            {
+                // Redetermine parameter order
+                var parameterInOrder = new List<ParameterInfo>();
+                var paramPattern = new System.Text.RegularExpressions.Regex(@"\{([\d\w]+)\}");
+                int placeHolderPosition = 0;
+                cmdInfo.CommandText = paramPattern.Replace(cmdInfo.CommandText, 
+                    delegate (System.Text.RegularExpressions.Match match) {
+                        var token = match.Groups[0].Value;
+                        var param = cmdInfo.Parameters.Where(p => p.ParameterName == token).FirstOrDefault();
+                        param._globalName = null;
+                        param._parameterName = CommandFactory.GetParameterName(placeHolderPosition);
+                        parameterInOrder.Add(param);
+                        placeHolderPosition += 1;
+                        return param._parameterName;
+                    });
+                cmdInfo.Parameters = parameterInOrder.ToArray();
+            }
             return cmdInfo;
         }
 
@@ -313,15 +333,23 @@ namespace SqlPlace
             {
                 var token = match.Groups[0].Value;
                 int localIndex = int.Parse(match.Groups[1].Value);
-                if (localIndex > indexedParameters.Length)
-                    throw new System.Exception($"Parameter {token} has not been assigned.");
-                var paramName = CommandFactory.GetParameterName(paramOffset + localIndex);
+                //if (localIndex > indexedParameters.Length)
+                //    throw new System.Exception($"Parameter {token} has not been assigned.");
+                string paramName;
+                if (CommandFactory.SupportNamedParameter())
+                    paramName = CommandFactory.GetParameterName(paramOffset + localIndex);
+                else
+                    paramName = "{" + (paramOffset + localIndex).ToString() + "}";
                 commandText = commandText.Replace(token, paramName);
             }
             for (int i = 0; i < indexedParameters.Length; i++)
             {
                 var param = indexedParameters[i];
-                var paramName = CommandFactory.GetParameterName(paramOffset + i);
+                string paramName;
+                if(CommandFactory.SupportNamedParameter())
+                    paramName = CommandFactory.GetParameterName(paramOffset + i);
+                else
+                    paramName = "{" + (paramOffset + i).ToString() + "}";
                 param._parameterName = paramName;
                 parameters.Add(param);
             }
@@ -350,20 +378,28 @@ namespace SqlPlace
                 else if (allNamedParameters.ContainsKey(globalName))
                 {
                     // parameter
-                    var paramName = CommandFactory.GetParameterName(globalName);
+                    string paramName;
+                    if(CommandFactory.SupportNamedParameter())
+                        paramName = CommandFactory.GetParameterName(globalName);
+                    else
+                        paramName = "{" + globalName + "}";
                     commandText = commandText.Replace(token, paramName);
                 }
-                else
-                {
-                    throw new System.Exception($"Parameter {token} has not been assigned.");
-                }
+                //else
+                //{
+                //    throw new System.Exception($"Parameter {token} has not been assigned.");
+                //}
             }
             if (this == Root)
             {
                 foreach (string globalName in allNamedParameters.Keys)
                 {
                     var param = allNamedParameters[globalName];
-                    var paramName = CommandFactory.GetParameterName(globalName);
+                    string paramName;
+                    if(CommandFactory.SupportNamedParameter())
+                        paramName = CommandFactory.GetParameterName(globalName);
+                    else
+                        paramName = "{" + globalName + "}";
                     param._parameterName = paramName;
                     parameters.Add(param);
                 }
