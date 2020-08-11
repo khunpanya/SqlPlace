@@ -393,22 +393,25 @@ namespace UnitTestProject
         }
 
         [TestMethod]
+        public void TestEscape()
+        {
+            q = new SqlStatement(@"select '{ ""A"" : 10 }' json from Table1");
+            cmd = q.ToCommand();
+            Assert.AreEqual(@"select '{ ""A"" : 10 }' json from Table1", cmd.CommandText);
+
+            q = new SqlStatement(@"select '{{A}}' json from Table1");
+            cmd = q.ToCommand();
+            Assert.AreEqual(@"select '{A}' json from Table1", cmd.CommandText);
+        }
+
+        [TestMethod]
         public void TestMethodTodo()
         {
-            // TODO Dont process JSON { }, Escape {{ }}
-
             // TODO Clone (for slightly different)
 
             // TODO Data provider specific replacement
 
             // TODO Should it throw exception on Make if found no parameter assignment ?
-
-            var q = new SqlStatement("select * from ({SRC}) t1 where {CONDS}");
-            var qsrc = new SqlStatement("select * from View1");
-            var qconds = new SqlStatement("f1={AA} and f2={BB}");
-            q.PlaceStatement("SRC", qsrc);
-            q.PlaceStatement("CONDS", qconds);
-            q.PlaceParameters(new { AA = 10, BB = "A" });
 
         }
 

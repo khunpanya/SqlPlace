@@ -303,6 +303,8 @@ namespace SqlPlace
             string commandText = _sql;
             List<ParameterInfo> parameters = new List<ParameterInfo>();
 
+            commandText = commandText.Replace("{{", "︷").Replace("}}", "︸");
+
             // Process indexed parameters
             var indexedParameters = IndexedParameters();
             var numericPattern = new System.Text.RegularExpressions.Regex(@"\{(\d+)\}");
@@ -328,7 +330,7 @@ namespace SqlPlace
             // Process named token
             var allNamedParameters = Root.AllNamedParameters();
             var allNamedStatements = Root.AllNamedStatements();
-            var stringPattern = new System.Text.RegularExpressions.Regex(@"\{(.+?)\}");
+            var stringPattern = new System.Text.RegularExpressions.Regex(@"\{(\w+?)\}");
             matches = stringPattern.Matches(commandText);
             foreach (System.Text.RegularExpressions.Match match in matches)
             {
@@ -366,6 +368,8 @@ namespace SqlPlace
                     parameters.Add(param);
                 }
             }
+
+            commandText = commandText.Replace("︷", "{").Replace("︸", "}");
 
             var result = new CommandInfo() { CommandText = commandText };
             result.Parameters = parameters.ToArray();
