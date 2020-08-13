@@ -8,6 +8,7 @@ SqlPlace is a .NET framework library to help you build complex parameterized SQL
 - [Parameterizing](#parameterizing)
     - [Indexed parameters](#indexed-parameters)
     - [Named parameters](#named-parameters)
+    - [Parameter's info](#parameters-info)
 - [Templating](#templating)
     - [Nested statement](#nested-statement)
     - [List](#list)
@@ -15,22 +16,37 @@ SqlPlace is a .NET framework library to help you build complex parameterized SQL
 - [Helper extensions](#helper-extensions)
     - [Execution](#execution)
     - [Extract objects' properties](#extract-objects-properties)
-- [ETC.](#etc)    
+- [DB Providers](#db-providers)
 
 # Basic usage
 Use **SqlPlace.SqlStatement** class to compose SQL and construct ADO.NET DbCommand.
 ```csharp
 using(var conn = new SqlConnection(connString))
 {
-    var q = new SqlPlace.SqlStatement("select * from Table1");
+    var q = new SqlPlace.SqlStatement("select * from Table1 where f1={0}", 10);
 
-    // SqlCommand is the default one. Change only if you want to use other provider.
+    // SqlCommand will be the default one. Change only if you want to use other DB provider.
     q.CommandFactory = new SqlPlace.Factories.SqlCommandFactory();
-    var cmd = q.ToCommand(conn);
+    var cmd = q.MakeCommand(conn);
 
-    // cmd is SqlCommand. You can do any ADO.NET execution with it.
+    // cmd is SqlCommand with parameter(s). You can do any ADO.NET execution with it.
 
 }
+```
+
+To get bare CommandText and Parameters that can be used with any other ORM.
+```csharp
+var q = new SqlStatement("select * from Table1 where f1={0}", 10);
+CommandInfo cmdInfo = q.Make();
+string commandText = cmdInfo.CommandText; // "select * from Table1 where f1=@p0"
+string paramName0 = cmdInfo.Parameters[0].ParameterName; // "@p0"
+object paramValue0 = cmdInfo.Parameters[0].Value; // 10
+```
+
+To get plain unparameterized SQL text.
+```csharp
+var q = new SqlStatement("select * from Table1 where f1={0} and f2={1} and f3={2}", 10, "A", new DateTime(1970, 1, 1));
+var sql = q.MakeText(); // "select * from Table1 where f1=10 and f2='A' and f3='1970-01-01 00:00:00'"
 ```
 
 # Parameterizing
@@ -79,6 +95,32 @@ q.PlaceParameters(new { AA = 10, BB = "A" });
 // @AA = 10, @BB = 'A'
 ```
 
+## Parameter's info
+To specify database type for a parameter.
+```csharp
+var dateValue = new DateTime(1970, 1, 1);
+q = new SqlStatement("{0}, {1}, {2}", 
+    dateValue, 
+    new ParameterInfo(dateValue, DbType.DateTime2), 
+    new ParameterInfo(dateValue) { SpecificDbType = (int)SqlDbType.SmallDateTime });
+// @p0 = '1970-01-01' (datetime)
+// @p1 = '1970-01-01' (datetime2)
+// @p2 = '1970-01-01' (smalldatetime)
+```
+
+To run stored procedure with return/output values
+```csharp
+var q = new SqlStatement("StoreProcedure1");
+q.CommandType = CommandType.StoredProcedure;
+q.PlaceParameter("preturn", new ParameterInfo() { DbType = DbType.Int32, Direction = ParameterDirection.ReturnValue });
+q.PlaceParameter("pinput", 123);
+q.PlaceParameter("poutput", new ParameterInfo() { DbType = DbType.AnsiString, Size = 50, Direction = ParameterDirection.Output });
+conn.ExecuteNonQuery(q, trans);
+var returnValue = q.ParameterValue("preturn");
+var inputValue = q.ParameterValue("pinput");
+var outputValue = q.ParameterValue("poutput");
+```
+
 # Templating
 ## Nested statement
 You can place SqlStatement object itself into braces. It won't be treated as parameter but that SQL will be nested inside.
@@ -101,7 +143,7 @@ You can also define empty string when there is no items in the list.\
 Note how index number of parameters are only refered locally within each listing item.
 ```csharp
 var q = new SqlStatement("select * from Table1 where {CONDS}");
-var qconds = new SqlList(" and ", "(1=0)");
+var qconds = new SqlList(" and ", "(1=0)"); // Separator = " and ", Empty string = "(1=0)"
 q.PlaceStatement("CONDS", qconds);
 // "select * from Table1 where (1=0)"
 
@@ -116,7 +158,10 @@ You can use **AddRange** method to add multiple listing items at once.
 var q = new SqlStatement("select * from Table1 where {CONDS}");
 var qconds = new SqlList(" and ", "(1=0)");
 q.PlaceStatement("CONDS", qconds);
-var items = new[] { new SqlStatement("(f1={0} or f2={1})", 10, "A"), new SqlStatement("f3>{0}", 100) };
+var items = new[] { 
+    new SqlStatement("(f1={0} or f2={1})", 10, "A"), 
+    new SqlStatement("f3>{0}", 100) 
+};
 qconds.AddRange(items);
 // "select * from Table1 where (f1=@p0 or f2=@p1) and f3>@p2"
 // @p0 = 10, @p1 = 'A', @p2 = 100
@@ -207,6 +252,16 @@ var myclasses = conn.ExecuteToObjects<MyClass>(q);
 var dicts = conn.ExecuteToDictionaries(q);
 ```
 
+To change DbCommand timeout.
+```csharp
+q.Timeout = 60;
+```
+
+To use DbTransaction
+```csharp
+conn.ExecuteNonQuery(q, trans);
+```
+
 ## Extract object's properties
 This extension method can extract properties from various type of object into IDictionary<string, object>.
 ```csharp
@@ -223,54 +278,39 @@ var dict2 = anonymousObject.ExtractProperties("f1", "f2");
 var dict3 = ExtensionMethods.ExtractProperties(dynamicObject, "f1", "f2");
 ```
 
-# ETC.
+# DB Providers
+SqlPlace comes with CommandFactory for SqlClient, OleDb and Odbc provider out of the box.
+Typically, you don't have to set SqlStatement's CommandFactory yourself
+as there is a generic class that will try to match DbConnection 
+and infer parameter's behavior of DB provider automatically.
+Even if the provider is not the three above.
 
-To specify database type for a parameter.
+However, there is some case that the generic class might failed to infer DB provider's behavior correctly.
+A concrete implementation of such DB provider would be required.
+Code below shows an example of how to implement CommandFactory for Oracle's ODP.NET.
 ```csharp
-var dateValue = new DateTime(1970, 1, 1);
-q = new SqlStatement("{0}, {1}, {2}", 
-    dateValue, 
-    new ParameterInfo(dateValue, DbType.DateTime2), 
-    new ParameterInfo(dateValue) { SpecificDbType = (int)SqlDbType.SmallDateTime });
-// @p0 = '1970-01-01' (datetime)
-// @p1 = '1970-01-01' (datetime2)
-// @p2 = '1970-01-01' (smalldatetime)
-```
+public class OracleCommandFactory : GenericCommandFactory
+{
+    public OracleCommandFactory() : base(OracleClientFactory.Instance)
+    {
 
-To run store procedure with output values
-```csharp
-var q = new SqlStatement("StoreProcedure1");
-q.CommandType = CommandType.StoredProcedure;
-q.PlaceParameter("pinput", 123);
-q.PlaceParameter("poutput", new ParameterInfo() { DbType = DbType.AnsiString, Size = 50, Direction = ParameterDirection.Output });
-q.PlaceParameter("preturn", new ParameterInfo() { DbType = DbType.Int32, Direction = ParameterDirection.ReturnValue });
-conn.ExecuteNonQuery(q, trans);
-var inputValue = q.ParameterValue("pinput");
-var outputValue = q.ParameterValue("poutput");
-var returnValue = q.ParameterValue("preturn");
-```
+    }
 
-To change DbCommand timeout.
-```csharp
-q.Timeout = 60;
-```
+    public override DbCommand CreateCommand()
+    {
+        var cmd = base.CreateCommand() as OracleCommand;
+        cmd.BindByName = true;
+        return cmd;
+    }
 
-To use DbTransaction
-```csharp
-conn.ExecuteNonQuery(q, trans);
-```
+    public override void SetSpecificDbType(DbParameter parameter, int specificDbType)
+    {
+        (parameter as OracleParameter).OracleDbType = (OracleDbType)specificDbType;
+    }
 
-To get bare CommandText and Parameters' information instead of constructing DbCommand.
-```csharp
-var q = new SqlStatement("select * from Table1 where f1={0}", 10);
-CommandInfo cmdInfo = q.Make();
-string commandText = cmdInfo.CommandText; // "select * from Table1 where f1=@p0"
-string paramName0 = cmdInfo.Parameters[0].ParameterName; // "@p0"
-object paramValue0 = cmdInfo.Parameters[0].Value; // 10
-```
-
-To get SQL as unparameterized plain text.
-```csharp
-q = new SqlStatement("select * from Table1 where f1={0} and f2={1} and f3={2}", 10, "A", new DateTime(1970, 1, 1));
-var sql = q.PlainText(); // "select * from Table1 where f1=10 and f2='A' and f3='1970-01-01 00:00:00'"
+    public override bool IsSupportNamedParameter()
+    {
+        return true;
+    }
+}
 ```
