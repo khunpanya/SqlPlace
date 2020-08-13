@@ -459,7 +459,6 @@ namespace UnitTestProject
         [TestMethod]
         public void TestExecute()
         {
-            // To run this test, Add app.config with ConnString
             string connString;
             string providerName;
             try
@@ -469,6 +468,7 @@ namespace UnitTestProject
             }
             catch
             {
+                Assert.Inconclusive("To run this test; Add app.config with ConnString");
                 return;
             }
             using (var conn = DbProviderFactories.GetFactory(providerName).CreateConnection())
