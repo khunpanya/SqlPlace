@@ -47,8 +47,9 @@
     <Compile Include="CommandInfo.cs" />
     <Compile Include="Extensions\ExtensionMethods.cs" />
     <Compile Include="Factories\ICommandFactory.cs" />
-    <Compile Include="Factories\OleDbCommandFactory.cs" />
     <Compile Include="Factories\GenericCommandFactory.cs" />
+    <Compile Include="Factories\OdbcCommandFactory.cs" />
+    <Compile Include="Factories\OleDbCommandFactory.cs" />
     <Compile Include="Factories\SqlCommandFactory.cs" />
     <Compile Include="ParameterInfo.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

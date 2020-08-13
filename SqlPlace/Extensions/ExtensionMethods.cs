@@ -15,7 +15,7 @@ namespace SqlPlace.Extensions
         [DebuggerStepThrough()]
         public static int ExecuteNonQuery(this DbConnection conn, SqlStatement q, DbTransaction tx = null)
         {
-            using (var command = q.ToCommand(conn))
+            using (var command = q.MakeCommand(conn))
             {
                 if (tx != null) command.Transaction = tx;
                 if (conn.State != ConnectionState.Open) conn.Open();
@@ -26,7 +26,7 @@ namespace SqlPlace.Extensions
         [DebuggerStepThrough()]
         public static object ExecuteScalar(this DbConnection conn, SqlStatement q, DbTransaction tx = null)
         {
-            using (var command = q.ToCommand(conn))
+            using (var command = q.MakeCommand(conn))
             {
                 if (tx != null) command.Transaction = tx;
                 if (conn.State != ConnectionState.Open) conn.Open();
@@ -37,7 +37,7 @@ namespace SqlPlace.Extensions
         [DebuggerStepThrough()]
         public static IDataReader ExecuteReader(this DbConnection conn, SqlStatement q, DbTransaction tx = null)
         {
-            using (var command = q.ToCommand(conn))
+            using (var command = q.MakeCommand(conn))
             {
                 if (tx != null) command.Transaction = tx;
                 if (conn.State != ConnectionState.Open) conn.Open();
@@ -48,7 +48,7 @@ namespace SqlPlace.Extensions
         [DebuggerStepThrough()]
         public static void ExecuteFill(this DbConnection conn, ref DataTable dt, SqlStatement q, DbTransaction tx = null)
         {
-            using (var command = q.ToCommand(conn))
+            using (var command = q.MakeCommand(conn))
             {
                 if (tx != null) command.Transaction = tx;
                 var da = q.CommandFactory.CreateDataAdapter();

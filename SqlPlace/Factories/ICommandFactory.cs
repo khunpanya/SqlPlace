@@ -11,15 +11,17 @@ namespace SqlPlace.Factories
 
         DbParameter CreateParameter();
 
-        void SetSpecificDbType(DbParameter parameter, int specificDbType);
-
         DbDataAdapter CreateDataAdapter();
-
-        bool SupportNamedParameter();
 
         string GetParameterName(int paramIndex);
 
         string GetParameterName(string paramName);
+
+        string GetParameterPlaceholder(int paramIndex);
+
+        void SetSpecificDbType(DbParameter parameter, int specificDbType);
+
+        bool IsSupportNamedParameter();
 
     }
 }
