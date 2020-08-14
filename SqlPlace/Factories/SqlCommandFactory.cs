@@ -1,40 +1,26 @@
-﻿using System.Collections.Generic;
-using System.Data;
+﻿using System;
 using System.Data.Common;
 using System.Data.SqlClient;
 
 namespace SqlPlace.Factories
 {
-    public class SqlCommandFactory : ICommandFactory
+    public class SqlCommandFactory : GenericCommandFactory
     {
+        static int _ = Register<SqlConnection, SqlCommandFactory>();
 
-        public DbCommand CreateCommand()
+        public SqlCommandFactory(): base(SqlClientFactory.Instance)
         {
-            return new SqlCommand();
+
         }
 
-        public DbParameter CreateParameter(string name, object value, SqlDbType? sqlDbType, int? size, ParameterDirection? direction)
+        public override void SetSpecificDbType(DbParameter parameter, int specificDbType)
         {
-            var param = new SqlParameter(name, value);
-            if (sqlDbType.HasValue) param.SqlDbType = sqlDbType.Value;
-            if (size.HasValue) param.Size = size.Value;
-            if (direction.HasValue) param.Direction = direction.Value;
-            return param;
+            (parameter as SqlParameter).SqlDbType = (System.Data.SqlDbType)specificDbType;
         }
 
-        public DbDataAdapter CreateDataAdapter()
+        public override bool IsSupportNamedParameter()
         {
-            return new SqlDataAdapter();
-        }
-
-        public string GetParameterName(int paramIndex)
-        {
-            return $"@p{paramIndex}";
-        }
-
-        public string GetParameterName(string paramName)
-        {
-            return $"@{paramName}";
+            return true;
         }
     }
 }

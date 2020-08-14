@@ -23,6 +23,32 @@ namespace SqlPlace
             PlaceParameters(namedParameters);
         }
 
+        public SqlStatement(string sql, object parameterObject)
+        {
+            _sql = sql;
+            if ( parameterObject != null )
+            {
+                if (IsPlacable(parameterObject))
+                {
+                    PlaceParameters(new object[] { parameterObject });
+                }
+                else
+                {
+                    PlaceParameters(Extensions.ExtensionMethods.ExtractProperties(parameterObject));
+                }
+            }
+        }
+
+        internal bool IsPlacable(object obj)
+        {
+            if (obj is ParameterInfo) return true;
+            if (obj.GetType().IsValueType) return true;
+            if (obj is string) return true;
+            if (obj is byte[]) return true;
+            if (obj is SqlStatement) return true;
+            return false;
+        }
+
         #region "Indexed Parameters"
         protected Dictionary<int, ParameterInfo> _indexedParameters = new Dictionary<int, ParameterInfo>();
         internal ParameterInfo[] IndexedParameters()
@@ -41,6 +67,11 @@ namespace SqlPlace
                 Func<int, string> nameFromHash = i => "Q" + GetHashCode().ToString() + "_" + i.ToString();
                 _sql = _sql.Replace("{" + localIndex.ToString() + "}", "{" + nameFromHash(localIndex) + "}");
                 PlaceStatement(nameFromHash(localIndex), value as SqlStatement);
+            } 
+            else if(value is object[])
+            {
+                // Change values array to SqlList
+                PlaceParameter(localIndex, SqlList.CommaValues(value as object[]));
             }
             else
             {
@@ -57,7 +88,7 @@ namespace SqlPlace
             }
         }
 
-        public void PlaceParameters(object[] indexedParameters)
+        public void PlaceParameters(params object[] indexedParameters)
         {
             for (int i = 0; i < indexedParameters.Length; i++)
                 PlaceParameter(i, indexedParameters[i]);
@@ -112,6 +143,21 @@ namespace SqlPlace
             foreach (string globalName in namedParameters.Keys)
                 PlaceParameter(globalName, namedParameters[globalName]);
         }
+
+        public void PlaceParameters(object parameterObject)
+        {
+            if (parameterObject != null)
+            {
+                if (IsPlacable(parameterObject))
+                {
+                    PlaceParameters(new object[] { parameterObject });
+                }
+                else
+                {
+                    PlaceParameters(Extensions.ExtensionMethods.ExtractProperties(parameterObject));
+                }
+            }
+        }
         #endregion
 
         #region "Nested Statements"
@@ -146,7 +192,6 @@ namespace SqlPlace
             if (CircularReferenceFound(statement)) throw new ArgumentException("Circular referencing detected");
 
             statement._root = Root;
-            statement.CommandFactory = CommandFactory;
             _namedStatements[globalName] = statement;
 
             return statement;
@@ -164,16 +209,36 @@ namespace SqlPlace
             return PlaceStatement(globalName, child);
         }
 
+        public SqlStatement PlaceStatement(string globalName, string sql, object parameterObject)
+        {
+            if (parameterObject != null)
+            {
+                if (IsPlacable(parameterObject))
+                {
+                    return PlaceStatement(globalName, sql, new object[] { parameterObject });
+                }
+                else
+                {
+                    return PlaceStatement(globalName, sql, Extensions.ExtensionMethods.ExtractProperties(parameterObject));
+                }
+            } else
+            {
+                return PlaceStatement(globalName, sql);
+            }
+        }
+
         #endregion
 
         #region "DbCommand"
+        public static Factories.ICommandFactory DefaultCommandFactory = new Factories.SqlCommandFactory();
+        
         protected Factories.ICommandFactory _commandFactory;
         public Factories.ICommandFactory CommandFactory
         {
             get
             {
                 if (_commandFactory == null)
-                    _commandFactory = new Factories.SqlCommandFactory();
+                    _commandFactory = DefaultCommandFactory;
                 return _commandFactory;
             }
             set
@@ -192,8 +257,12 @@ namespace SqlPlace
         /// </summary>
         public int Timeout { get; set; } = 30;
 
-        public virtual DbCommand ToCommand(DbConnection connection = null, DbTransaction transaction = null)
+        public virtual DbCommand MakeCommand(DbConnection connection = null, DbTransaction transaction = null)
         {
+            if(_commandFactory == null && connection != null)
+            {
+                CommandFactory = Factories.GenericCommandFactory.Resolve(connection);
+            }
             var cmd = CommandFactory.CreateCommand();
             cmd.CommandType = CommandType;
             cmd.CommandTimeout = Timeout;
@@ -206,7 +275,13 @@ namespace SqlPlace
             {
                 var pValue = param.Value;
                 if (pValue == null) pValue = DBNull.Value;
-                var parameter = CommandFactory.CreateParameter(param.ParameterName, pValue, param.SqlDbType, param.Size, param.Direction);
+                var parameter = CommandFactory.CreateParameter();
+                parameter.ParameterName = param.ParameterName;
+                parameter.Value = pValue;
+                if (param.DbType.HasValue) parameter.DbType = param.DbType.Value;
+                if (param.SpecificDbType.HasValue) CommandFactory.SetSpecificDbType(parameter, param.SpecificDbType.Value);
+                if (param.Size.HasValue) parameter.Size = param.Size.Value;
+                if (param.Direction.HasValue) parameter.Direction = param.Direction.Value;
                 cmd.Parameters.Add(parameter);
                 if (param._globalName != null)
                     _dbParameters.Add(param._globalName, parameter);
@@ -220,17 +295,56 @@ namespace SqlPlace
         {
             return _dbParameters[globalName].Value;
         }
+
         public CommandInfo Make()
         {
+            foreach (var statement in AllNamedStatements().Values) 
+                statement.CommandFactory = this.CommandFactory;
             int paramOffset = 0;
-            var cmdInfo = Make(ref paramOffset);
+            var cmdInfo = MakeRecursive(ref paramOffset);
+            if(!CommandFactory.IsSupportNamedParameter())
+            {
+                // Redetermine parameter order
+                var parameterInOrder = new List<ParameterInfo>();
+                var paramPattern = new System.Text.RegularExpressions.Regex(@"\{([\d\w]+)\}");
+                int placeHolderPosition = 0;
+                cmdInfo.CommandText = paramPattern.Replace(cmdInfo.CommandText, 
+                    delegate (System.Text.RegularExpressions.Match match) {
+                        var token = match.Groups[0].Value;
+                        var param = cmdInfo.Parameters.Where(p => p.ParameterName == token).FirstOrDefault();
+                        if(CommandType==CommandType.StoredProcedure)
+                        {
+                            // Retain name for StoredProcedure
+                            param._parameterName = CommandFactory.GetParameterName(param._globalName);
+                        }
+                        else
+                        {
+                            param._globalName = null;
+                            param._parameterName = CommandFactory.GetParameterName(placeHolderPosition);
+                        }
+                        parameterInOrder.Add(param);
+                        placeHolderPosition += 1;
+                        return CommandFactory.GetParameterPlaceholder(placeHolderPosition);
+                    });
+                if (CommandType==CommandType.StoredProcedure && parameterInOrder.Count == 0)
+                {
+                    for (int i = 0; i < cmdInfo.Parameters.Length; i++)
+                        cmdInfo.Parameters[i]._parameterName = CommandFactory.GetParameterName(cmdInfo.Parameters[i]._globalName);
+                }
+                else
+                {
+                    cmdInfo.Parameters = parameterInOrder.ToArray();
+                }
+            }
             return cmdInfo;
         }
 
-        protected virtual CommandInfo Make(ref int paramOffset)
+        protected virtual CommandInfo MakeRecursive(ref int paramOffset)
         {
             string commandText = _sql;
             List<ParameterInfo> parameters = new List<ParameterInfo>();
+
+            commandText = commandText.Replace("{{", "︷").Replace("}}", "︸");
 
             // Process indexed parameters
             var indexedParameters = IndexedParameters();
@@ -240,15 +354,23 @@ namespace SqlPlace
             {
                 var token = match.Groups[0].Value;
                 int localIndex = int.Parse(match.Groups[1].Value);
-                if (localIndex > indexedParameters.Length)
-                    throw new System.Exception($"Parameter {token} has not been assigned.");
-                var paramName = CommandFactory.GetParameterName(paramOffset + localIndex);
+                //if (localIndex > indexedParameters.Length)
+                //    throw new System.Exception($"Parameter {token} has not been assigned.");
+                string paramName;
+                if (CommandFactory.IsSupportNamedParameter())
+                    paramName = CommandFactory.GetParameterName(paramOffset + localIndex);
+                else
+                    paramName = "{" + (paramOffset + localIndex).ToString() + "}";
                 commandText = commandText.Replace(token, paramName);
             }
             for (int i = 0; i < indexedParameters.Length; i++)
             {
                 var param = indexedParameters[i];
-                var paramName = CommandFactory.GetParameterName(paramOffset + i);
+                string paramName;
+                if(CommandFactory.IsSupportNamedParameter())
+                    paramName = CommandFactory.GetParameterName(paramOffset + i);
+                else
+                    paramName = "{" + (paramOffset + i).ToString() + "}";
                 param._parameterName = paramName;
                 parameters.Add(param);
             }
@@ -257,7 +379,7 @@ namespace SqlPlace
             // Process named token
             var allNamedParameters = Root.AllNamedParameters();
             var allNamedStatements = Root.AllNamedStatements();
-            var stringPattern = new System.Text.RegularExpressions.Regex(@"\{(.+?)\}");
+            var stringPattern = new System.Text.RegularExpressions.Regex(@"\{(\w+?)\}");
             matches = stringPattern.Matches(commandText);
             foreach (System.Text.RegularExpressions.Match match in matches)
             {
@@ -269,7 +391,7 @@ namespace SqlPlace
                     var child = allNamedStatements[globalName];
                     if (child is SqlStatement)
                     {
-                        var childCmdInfo = (child as SqlStatement).Make(ref paramOffset);
+                        var childCmdInfo = child.MakeRecursive(ref paramOffset);
                         commandText = commandText.Replace(token, childCmdInfo.CommandText);
                         parameters.AddRange(childCmdInfo.Parameters);
                     }
@@ -277,54 +399,81 @@ namespace SqlPlace
                 else if (allNamedParameters.ContainsKey(globalName))
                 {
                     // parameter
-                    var paramName = CommandFactory.GetParameterName(globalName);
+                    string paramName;
+                    if(CommandFactory.IsSupportNamedParameter())
+                        paramName = CommandFactory.GetParameterName(globalName);
+                    else
+                        paramName = "{" + globalName + "}";
                     commandText = commandText.Replace(token, paramName);
                 }
-                else
-                {
-                    throw new System.Exception($"Parameter {token} has not been assigned.");
-                }
+                //else
+                //{
+                //    throw new System.Exception($"Parameter {token} has not been assigned.");
+                //}
             }
             if (this == Root)
             {
                 foreach (string globalName in allNamedParameters.Keys)
                 {
                     var param = allNamedParameters[globalName];
-                    var paramName = CommandFactory.GetParameterName(globalName);
+                    string paramName;
+                    if(CommandFactory.IsSupportNamedParameter())
+                        paramName = CommandFactory.GetParameterName(globalName);
+                    else
+                        paramName = "{" + globalName + "}";
                     param._parameterName = paramName;
                     parameters.Add(param);
                 }
             }
+
+            commandText = commandText.Replace("︷", "{").Replace("︸", "}");
 
             var result = new CommandInfo() { CommandText = commandText };
             result.Parameters = parameters.ToArray();
             return result;
         }
 
-        public string PlainText()
+        public string MakeText()
         {
-            var cmdInfo = Make();
-            var sql = cmdInfo.CommandText;
-            for (int i = 0; i < cmdInfo.Parameters.Count(); i++)
+            foreach (var statement in AllNamedStatements().Values)
+                statement.CommandFactory = this.CommandFactory;
+            int paramOffset = 0;
+            var cmdInfo = MakeRecursive(ref paramOffset);
+            if (!CommandFactory.IsSupportNamedParameter())
             {
-                sql = sql.Replace(CommandFactory.GetParameterName(i), Quote(cmdInfo.Parameters[i].Value));
+                // Redetermine parameter order
+                var paramPattern = new System.Text.RegularExpressions.Regex(@"\{([\d\w]+)\}");
+                cmdInfo.CommandText = paramPattern.Replace(cmdInfo.CommandText,
+                    delegate (System.Text.RegularExpressions.Match match) {
+                        var token = match.Groups[0].Value;
+                        var param = cmdInfo.Parameters.Where(p => p.ParameterName == token).FirstOrDefault();
+                        return QuoteValue(param.Value);
+                    });
             }
-            return sql;
-        }
-        private static string Quote(object obj)
-        {
-            if (obj == null || obj == DBNull.Value)
-                return "null";
-            else if (obj is string)
-                return "'" + ((string)obj).Replace("'", "''") + "'";
-            else if (obj is DateTime)
-                return "'" + ((DateTime)obj).ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.GetCultureInfo("en-GB")) + "'";
-            else if (obj is bool)
-                return ((bool)obj) ? "1" : "0";
             else
-                return obj.ToString();
+            {
+                for (int i = 0; i < cmdInfo.Parameters.Count(); i++)
+                {
+                    cmdInfo.CommandText = cmdInfo.CommandText.Replace(cmdInfo.Parameters[i].ParameterName, QuoteValue(cmdInfo.Parameters[i].Value));
+                }
+            }
+            return cmdInfo.CommandText;
+        }
+        private static string QuoteValue(object value)
+        {
+            if (value == null || value == DBNull.Value)
+                return "null";
+            else if (value is string)
+                return "'" + ((string)value).Replace("'", "''") + "'";
+            else if (value is DateTime)
+                return "'" + ((DateTime)value).ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.GetCultureInfo("en-GB")) + "'";
+            else if (value is bool)
+                return ((bool)value) ? "1" : "0";
+            else
+                return value.ToString();
         }
         #endregion
 
     }
+
 }

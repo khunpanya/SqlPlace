@@ -2,12 +2,13 @@
 {
     public struct ParameterInfo
     {
-        public ParameterInfo(object value, System.Data.SqlDbType? sqlDbType = null, int? size = null)
+        public ParameterInfo(object value, System.Data.DbType? dbType = null, int? size = null)
         {
             _globalName = null;
             _parameterName = null;
             Value = value;
-            SqlDbType = sqlDbType;
+            DbType = dbType;
+            SpecificDbType = null;
             Size = size;
             Direction = null;
         }
@@ -19,7 +20,12 @@
 
         public object Value;
 
-        public System.Data.SqlDbType? SqlDbType;
+        public System.Data.DbType? DbType;
+
+        /// <summary>
+        /// To specify enum value of certain DB type such e.g. SqlDbType, OleDbType
+        /// </summary>
+        public int? SpecificDbType;
 
         public int? Size;
 

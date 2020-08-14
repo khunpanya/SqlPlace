@@ -9,13 +9,19 @@ namespace SqlPlace.Factories
     {
         DbCommand CreateCommand();
 
-        DbParameter CreateParameter(string name, object value, SqlDbType? sqlDbType, int? size, ParameterDirection? direction);
+        DbParameter CreateParameter();
 
         DbDataAdapter CreateDataAdapter();
 
         string GetParameterName(int paramIndex);
 
         string GetParameterName(string paramName);
+
+        string GetParameterPlaceholder(int paramIndex);
+
+        void SetSpecificDbType(DbParameter parameter, int specificDbType);
+
+        bool IsSupportNamedParameter();
 
     }
 }

@@ -91,6 +91,13 @@ namespace SqlPlace
             return list;
         }
 
+        public static SqlList CommaAssignments(object parameterObject, string emptyString = null)
+        {
+            var list = new SqlList(", ", emptyString);
+            if (parameterObject != null) list.AddRange(Extensions.ExtensionMethods.ExtractProperties(parameterObject));
+            return list;
+        }
+
         #endregion
 
     }

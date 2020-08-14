@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<package >
+  <metadata>
+    <id>$id$</id>
+    <version>1.1.0-beta</version>
+    <title>$title$</title>
+    <authors>$author$</authors>
+    <owners>$author$</owners>
+    <projectUrl>https://github.com/khunpanya/SqlPlace</projectUrl>
+    <repository type="git" url="https://github.com/khunpanya/SqlPlace.git" />
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <license type="expression">MIT</license>
+    <description>$description$</description>
+    <releaseNotes>Can assign parameters from object's properties now. Support other DB providers then SqlClient.</releaseNotes>
+    <copyright>Copyright 2020 Panya Thanyaprasertkul</copyright>
+    <tags>sql sql-builder query-builder ado-net</tags>
+    <dependencies>
+      <group targetFramework=".NETFramework3.5" />
+    </dependencies>
+  </metadata>
+</package>
