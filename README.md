@@ -17,7 +17,7 @@ SqlPlace is a .NET framework library to help you build complex parameterized SQL
     - [Extract objects' properties](#extract-objects-properties)
 - [Advance](#advance)
     - [Parameter info](#parameter-info)
-    - [DB Providers](#db-providers)
+    - [Other DB Providers](#other-db-providers)
 
 # Basic usage
 Use **SqlPlace.SqlStatement** class to compose SQL and construct ADO.NET DbCommand.
@@ -232,7 +232,7 @@ To use DbTransaction.
 conn.ExecuteNonQuery(q, trans);
 ```
 
-To change DbCommand timeout on execution.
+To change DbCommand execution timeout.
 ```csharp
 q.Timeout = 60;
 ```
@@ -280,14 +280,14 @@ var inputValue = q.ParameterValue("pinput");
 var outputValue = q.ParameterValue("poutput");
 ```
 
-## DB Provider
+## Other DB Providers
 SqlPlace comes with CommandFactory for SqlClient, OleDb and Odbc provider out of the box.
 Typically, you don't have to set SqlStatement's CommandFactory yourself
-as there is a generic class that will try to match DbConnection 
-and infer parameter's behavior of DB provider automatically.
+as there is a generic class that will try to resolve DbConnection 
+and infer parameter's behavior of that DB provider automatically.
 Even if the provider is not the three above.
 
-However, there is some case that the generic class might failed to infer DB provider's behavior correctly.
+However, there is some case that this generic class might failed to infer DB provider's behavior correctly.
 A concrete implementation of such DB provider would be required.
 Code below shows an example of how to implement CommandFactory for Oracle's ODP.NET.
 ```csharp
