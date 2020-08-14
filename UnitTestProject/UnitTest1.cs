@@ -590,6 +590,46 @@ AS BEGIN select @poutput = '(('+convert(varchar, @pinput)+'))';  return 31; END"
         }
 
         [TestMethod]
+        public void TestDefaultFactory()
+        {
+            var q = new SqlStatement("");
+            q.MakeCommand();
+            Assert.IsTrue(q.CommandFactory.GetType() == typeof(SqlPlace.Factories.SqlCommandFactory));
+            q = new SqlStatement("");
+            q.MakeCommand();
+            Assert.IsTrue(q.CommandFactory.GetType() == typeof(SqlPlace.Factories.SqlCommandFactory));
+
+            SqlStatement.DefaultCommandFactory = new SqlPlace.Factories.OleDbCommandFactory();
+            q = new SqlStatement("");
+            q.MakeCommand();
+            Assert.IsTrue(q.CommandFactory.GetType() == typeof(SqlPlace.Factories.OleDbCommandFactory));
+            q = new SqlStatement("");
+            q.MakeCommand();
+            Assert.IsTrue(q.CommandFactory.GetType() == typeof(SqlPlace.Factories.OleDbCommandFactory));
+
+            q = new SqlStatement("");
+            q.CommandFactory = new SqlPlace.Factories.OdbcCommandFactory();
+            q.MakeCommand();
+            Assert.IsTrue(q.CommandFactory.GetType() == typeof(SqlPlace.Factories.OdbcCommandFactory));
+            Assert.IsTrue(SqlStatement.DefaultCommandFactory.GetType() == typeof(SqlPlace.Factories.OleDbCommandFactory));
+
+            DbConnection conn = new System.Data.SqlClient.SqlConnection();
+            q = new SqlStatement("");
+            q.MakeCommand(conn);
+            Assert.IsTrue(q.CommandFactory.GetType() == typeof(SqlPlace.Factories.SqlCommandFactory));
+            conn = new System.Data.OleDb.OleDbConnection();
+            q = new SqlStatement("");
+            q.MakeCommand(conn);
+            Assert.IsTrue(q.CommandFactory.GetType() == typeof(SqlPlace.Factories.OleDbCommandFactory));
+            conn = new System.Data.Odbc.OdbcConnection();
+            q = new SqlStatement("");
+            q.MakeCommand(conn);
+            Assert.IsTrue(q.CommandFactory.GetType() == typeof(SqlPlace.Factories.OdbcCommandFactory));
+
+            SqlStatement.DefaultCommandFactory = new SqlPlace.Factories.SqlCommandFactory();
+        }
+
+        [TestMethod]
         public void TestMethodTodo()
         {
             // TODO Clone (for slightly different)

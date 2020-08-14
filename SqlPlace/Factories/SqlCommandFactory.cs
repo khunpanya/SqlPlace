@@ -1,10 +1,13 @@
-﻿using System.Data.Common;
+﻿using System;
+using System.Data.Common;
 using System.Data.SqlClient;
 
 namespace SqlPlace.Factories
 {
     public class SqlCommandFactory : GenericCommandFactory
     {
+        static int _ = Register<SqlConnection, SqlCommandFactory>();
+
         public SqlCommandFactory(): base(SqlClientFactory.Instance)
         {
 

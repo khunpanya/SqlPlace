@@ -1,12 +1,70 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Data;
 using System.Data.Common;
+using System.Linq;
 using System.Reflection;
 
 namespace SqlPlace.Factories
 {
     public class GenericCommandFactory : ICommandFactory
     {
+        #region "Registry"
+        internal static Dictionary<Type, ICommandFactory> _registry = new Dictionary<Type, ICommandFactory>();
+        protected static int Register<TDbConnection, TCommandFactory>()
+            where TDbConnection : DbConnection
+            where TCommandFactory : ICommandFactory, new()
+        {
+            _registry.Add(typeof(TDbConnection), new TCommandFactory());
+            return _registry.Count;
+        }
+        public static ICommandFactory Resolve<TDbConnection>(TDbConnection connection) where TDbConnection : DbConnection
+        {
+            if(_registry.ContainsKey(connection.GetType()))
+            {
+                return _registry[connection.GetType()];
+            } else
+            {
+                // Try best to determine DbProviderFactory from DbConnection 
+                // (Due to .net3.5 cannot simply determine DbProviderFactory from DbConnection)
+
+                Type TConn = connection.GetType();
+                DbProviderFactory providerFactory = null;
+                PropertyInfo prop1 = TConn.GetProperty("DbProviderFactory", BindingFlags.Instance | BindingFlags.NonPublic);
+                if (prop1 != null) providerFactory = prop1.GetValue(connection, null) as DbProviderFactory;
+                if (providerFactory != null)
+                {
+                    return new GenericCommandFactory(providerFactory);
+                }
+
+                object connFactory = null;
+                PropertyInfo prop2 = TConn.GetProperty("ConnectionFactory", BindingFlags.Instance | BindingFlags.NonPublic);
+                if (prop2 != null) connFactory = prop2.GetValue(connection, null);
+                if (connFactory != null)
+                {
+                    PropertyInfo prop3 = connFactory.GetType().GetProperty("ProviderFactory", BindingFlags.Instance | BindingFlags.Public);
+                    if(prop3 != null) providerFactory = prop3.GetValue(connFactory, null) as DbProviderFactory;
+                    if (providerFactory != null)
+                    {
+                        return new GenericCommandFactory(providerFactory);
+                    }
+                }
+
+                var segments = connection.GetType().FullName.Split('.');
+                var providerName = string.Join(".", segments.Take(segments.Length - 1).ToArray());
+                try
+                {
+                    providerFactory = DbProviderFactories.GetFactory(providerName);
+                    return new GenericCommandFactory(providerFactory);
+                }
+                catch (Exception ex)
+                {
+                    throw new Exception("Unable to determine CommandFactory from DbConnection.", ex);
+                }
+            }
+        }
+        #endregion
+
         /// <param name="providerName">E.g. "System.Data.SqlClient"</param>
         public GenericCommandFactory(string providerName): this(DbProviderFactories.GetFactory(providerName))
         {

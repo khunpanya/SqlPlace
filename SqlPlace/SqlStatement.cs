@@ -230,13 +230,15 @@ namespace SqlPlace
         #endregion
 
         #region "DbCommand"
+        public static Factories.ICommandFactory DefaultCommandFactory = new Factories.SqlCommandFactory();
+        
         protected Factories.ICommandFactory _commandFactory;
         public Factories.ICommandFactory CommandFactory
         {
             get
             {
                 if (_commandFactory == null)
-                    _commandFactory = new Factories.SqlCommandFactory();
+                    _commandFactory = DefaultCommandFactory;
                 return _commandFactory;
             }
             set
@@ -259,17 +261,7 @@ namespace SqlPlace
         {
             if(_commandFactory == null && connection != null)
             {
-                // Auto determine DB provider
-                var segments = connection.GetType().FullName.Split('.');
-                var providerName = string.Join(".", segments.Take(segments.Length - 1).ToArray());
-                try
-                {
-                    CommandFactory = new Factories.GenericCommandFactory(DbProviderFactories.GetFactory(providerName));
-                }
-                catch(Exception ex)
-                {
-                    throw new Exception("Unable to determine CommandFactory from DbConnection. Please manually specific CommandFactory.", ex);
-                }
+                CommandFactory = Factories.GenericCommandFactory.Resolve(connection);
             }
             var cmd = CommandFactory.CreateCommand();
             cmd.CommandType = CommandType;

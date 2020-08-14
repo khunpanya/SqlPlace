@@ -8,7 +8,6 @@ SqlPlace is a .NET framework library to help you build complex parameterized SQL
 - [Parameterizing](#parameterizing)
     - [Indexed parameters](#indexed-parameters)
     - [Named parameters](#named-parameters)
-    - [Parameter's info](#parameters-info)
 - [Templating](#templating)
     - [Nested statement](#nested-statement)
     - [List](#list)
@@ -16,7 +15,9 @@ SqlPlace is a .NET framework library to help you build complex parameterized SQL
 - [Helper extensions](#helper-extensions)
     - [Execution](#execution)
     - [Extract objects' properties](#extract-objects-properties)
-- [DB Providers](#db-providers)
+- [Advance](#advance)
+    - [Parameter info](#parameter-info)
+    - [DB Providers](#db-providers)
 
 # Basic usage
 Use **SqlPlace.SqlStatement** class to compose SQL and construct ADO.NET DbCommand.
@@ -93,32 +94,6 @@ var q = new SqlStatement("select * from Table1 where f1={AA} and f2={BB}");
 q.PlaceParameters(new { AA = 10, BB = "A" });
 // "select * from Table1 where f1=@AA and f2=@BB"
 // @AA = 10, @BB = 'A'
-```
-
-## Parameter's info
-To specify database type for a parameter.
-```csharp
-var dateValue = new DateTime(1970, 1, 1);
-q = new SqlStatement("{0}, {1}, {2}", 
-    dateValue, 
-    new ParameterInfo(dateValue, DbType.DateTime2), 
-    new ParameterInfo(dateValue) { SpecificDbType = (int)SqlDbType.SmallDateTime });
-// @p0 = '1970-01-01' (datetime)
-// @p1 = '1970-01-01' (datetime2)
-// @p2 = '1970-01-01' (smalldatetime)
-```
-
-To run stored procedure with return/output values
-```csharp
-var q = new SqlStatement("StoreProcedure1");
-q.CommandType = CommandType.StoredProcedure;
-q.PlaceParameter("preturn", new ParameterInfo() { DbType = DbType.Int32, Direction = ParameterDirection.ReturnValue });
-q.PlaceParameter("pinput", 123);
-q.PlaceParameter("poutput", new ParameterInfo() { DbType = DbType.AnsiString, Size = 50, Direction = ParameterDirection.Output });
-conn.ExecuteNonQuery(q, trans);
-var returnValue = q.ParameterValue("preturn");
-var inputValue = q.ParameterValue("pinput");
-var outputValue = q.ParameterValue("poutput");
 ```
 
 # Templating
@@ -252,14 +227,14 @@ var myclasses = conn.ExecuteToObjects<MyClass>(q);
 var dicts = conn.ExecuteToDictionaries(q);
 ```
 
-To change DbCommand timeout.
-```csharp
-q.Timeout = 60;
-```
-
-To use DbTransaction
+To use DbTransaction.
 ```csharp
 conn.ExecuteNonQuery(q, trans);
+```
+
+To change DbCommand timeout on execution.
+```csharp
+q.Timeout = 60;
 ```
 
 ## Extract object's properties
@@ -278,7 +253,34 @@ var dict2 = anonymousObject.ExtractProperties("f1", "f2");
 var dict3 = ExtensionMethods.ExtractProperties(dynamicObject, "f1", "f2");
 ```
 
-# DB Providers
+# Advance
+## Parameter info
+To specify database type for a parameter.
+```csharp
+var dateValue = new DateTime(1970, 1, 1);
+q = new SqlStatement("{0}, {1}, {2}", 
+    dateValue, 
+    new ParameterInfo(dateValue, DbType.DateTime2), 
+    new ParameterInfo(dateValue) { SpecificDbType = (int)SqlDbType.SmallDateTime });
+// @p0 = '1970-01-01' (datetime)
+// @p1 = '1970-01-01' (datetime2)
+// @p2 = '1970-01-01' (smalldatetime)
+```
+
+To run stored procedure with return/output values
+```csharp
+var q = new SqlStatement("StoredProcedure1");
+q.CommandType = CommandType.StoredProcedure;
+q.PlaceParameter("preturn", new ParameterInfo() { DbType = DbType.Int32, Direction = ParameterDirection.ReturnValue });
+q.PlaceParameter("pinput", 123);
+q.PlaceParameter("poutput", new ParameterInfo() { DbType = DbType.AnsiString, Size = 50, Direction = ParameterDirection.Output });
+conn.ExecuteNonQuery(q, trans);
+var returnValue = q.ParameterValue("preturn");
+var inputValue = q.ParameterValue("pinput");
+var outputValue = q.ParameterValue("poutput");
+```
+
+## DB Provider
 SqlPlace comes with CommandFactory for SqlClient, OleDb and Odbc provider out of the box.
 Typically, you don't have to set SqlStatement's CommandFactory yourself
 as there is a generic class that will try to match DbConnection 
@@ -291,6 +293,8 @@ Code below shows an example of how to implement CommandFactory for Oracle's ODP.
 ```csharp
 public class OracleCommandFactory : GenericCommandFactory
 {
+    static int _ = Register<OracleConnection, OracleCommandFactory>();
+
     public OracleCommandFactory() : base(OracleClientFactory.Instance)
     {
 

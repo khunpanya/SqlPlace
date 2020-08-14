@@ -5,6 +5,8 @@ namespace SqlPlace.Factories
 {
     public class OleDbCommandFactory : GenericCommandFactory
     {
+        static int _ = Register<OleDbConnection, OleDbCommandFactory>();
+
         public OleDbCommandFactory() : base(OleDbFactory.Instance)
         {
 
