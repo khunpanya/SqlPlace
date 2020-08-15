@@ -20,34 +20,35 @@ SqlPlace is a .NET framework library to help you build complex parameterized SQL
     - [Other DB Providers](#other-db-providers)
 
 # Basic usage
-Use **SqlPlace.SqlStatement** class to compose SQL and construct ADO.NET DbCommand.
+Use **SqlPlace.SqlStatement** class to compose SQL and call **MakeCommand** to construct ADO.NET DbCommand.
 ```csharp
 using(var conn = new SqlConnection(connString))
 {
-    var q = new SqlPlace.SqlStatement("select * from Table1 where f1={0}", 10);
-
     // SqlCommand will be the default one. Change only if you want to use other DB provider.
-    q.CommandFactory = new SqlPlace.Factories.SqlCommandFactory();
-    var cmd = q.MakeCommand(conn);
+    SqlPlace.SqlStatement.DefaultCommandFactory = new SqlPlace.Factories.SqlCommandFactory();
+
+    var q = new SqlPlace.SqlStatement("select * from Table1 where f1={0}", 10);
+    DbCommand cmd = q.MakeCommand(conn);
 
     // cmd is SqlCommand with parameter(s). You can do any ADO.NET execution with it.
 
 }
 ```
 
-To get bare CommandText and Parameters that can be used with any other ORM.
+**Make** to get bare CommandText and Parameters that can be used with any other ORM.
 ```csharp
 var q = new SqlStatement("select * from Table1 where f1={0}", 10);
 CommandInfo cmdInfo = q.Make();
+
 string commandText = cmdInfo.CommandText; // "select * from Table1 where f1=@p0"
 string paramName0 = cmdInfo.Parameters[0].ParameterName; // "@p0"
 object paramValue0 = cmdInfo.Parameters[0].Value; // 10
 ```
 
-To get plain unparameterized SQL text.
+**MakeText** to get plain unparameterized SQL text.
 ```csharp
 var q = new SqlStatement("select * from Table1 where f1={0} and f2={1} and f3={2}", 10, "A", new DateTime(1970, 1, 1));
-var sql = q.MakeText(); // "select * from Table1 where f1=10 and f2='A' and f3='1970-01-01 00:00:00'"
+string sql = q.MakeText(); // "select * from Table1 where f1=10 and f2='A' and f3='1970-01-01 00:00:00'"
 ```
 
 # Parameterizing
@@ -202,29 +203,29 @@ Codes below show examples of extension methods those let DbConnection executes S
 ```csharp
 // DbCommand's execution wrappers
 
-var affects = conn.ExecuteNonQuery(q);
+int affects = conn.ExecuteNonQuery(q);
 
-var val = conn.ExecuteScalar(q);
+object val = conn.ExecuteScalar(q);
 
-var reader = conn.ExecuteReader(q);
+IDataReader reader = conn.ExecuteReader(q);
 ```
 ```csharp
 // Execution methods to work with DataTable
 
 conn.ExecuteFill(dt, q); // where dt is a DataTable
 
-var dt = conn.ExecuteToDataTable(q);
+DataTable dt = conn.ExecuteToDataTable(q);
 
-var dt = conn.ExecuteToDataTable<MyDataTable>(q);
+MyDataTable dt = conn.ExecuteToDataTable<MyDataTable>(q);
 ```
 ```csharp
 // Execution methods to work with value object, POCO, or dictionary
 
-var values = conn.ExecuteToValues<int?>(q);
+IEnumerable<int?> values = conn.ExecuteToValues<int?>(q);
 
-var myclasses = conn.ExecuteToObjects<MyClass>(q);
+IEnumerable<MyClass> myclasses = conn.ExecuteToObjects<MyClass>(q);
 
-var dicts = conn.ExecuteToDictionaries(q);
+IEnumerable<IDictionary<string, object>> dicts = conn.ExecuteToDictionaries(q);
 ```
 
 To use DbTransaction.
@@ -291,7 +292,7 @@ However, there is some case that this generic class might failed to infer DB pro
 A concrete implementation of such DB provider would be required.
 Code below shows an example of how to implement CommandFactory for Oracle's ODP.NET.
 ```csharp
-public class OracleCommandFactory : GenericCommandFactory
+public class OracleCommandFactory : SqlPlace.Factories.GenericCommandFactory
 {
     static int _ = Register<OracleConnection, OracleCommandFactory>();
 
