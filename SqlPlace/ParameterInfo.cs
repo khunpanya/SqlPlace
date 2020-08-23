@@ -30,5 +30,10 @@
         public int? Size;
 
         public System.Data.ParameterDirection? Direction;
+
+        public override string ToString()
+        {
+            return $"{ParameterName}, {Value}";
+        }
     }
 }

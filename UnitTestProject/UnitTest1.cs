@@ -352,10 +352,233 @@ namespace UnitTestProject
         {
             q = new SqlStatement("select * from T1 where {FILTER}");
             q.PlaceStatement("FILTER", "F1 in ({0}) and F2 in ({1})", SqlList.CommaValues(set1), SqlList.CommaValues(set2));
+
+            q.CommandFactory = new SqlPlace.Factories.SqlCommandFactory();
             Assert.AreEqual("select * from T1 where F1 in ('1', '3', '5') and F2 in (1, 3, 5)", q.MakeText());
 
             q.CommandFactory = new SqlPlace.Factories.OleDbCommandFactory();
             Assert.AreEqual("select * from T1 where F1 in ('1', '3', '5') and F2 in (1, 3, 5)", q.MakeText());
+
+            q.CommandFactory = new SqlPlace.Factories.OdbcCommandFactory();
+            Assert.AreEqual("select * from T1 where F1 in ('1', '3', '5') and F2 in (1, 3, 5)", q.MakeText());
+
+
+            q = new SqlStatement("{B} {0} {A} {2} {1} {B} {0}");
+            q.PlaceParameter(0, 10);
+            q.PlaceParameter(1, 20);
+            q.PlaceParameter(2, 30);
+            q.PlaceParameter("A", 100);
+            q.PlaceParameter("B", 200);
+
+            q.CommandFactory = new SqlPlace.Factories.SqlCommandFactory();
+            Assert.AreEqual("200 10 100 30 20 200 10", q.MakeText());
+
+            q.CommandFactory = new SqlPlace.Factories.OleDbCommandFactory();
+            Assert.AreEqual("200 10 100 30 20 200 10", q.MakeText());
+
+            q.CommandFactory = new SqlPlace.Factories.OdbcCommandFactory();
+            Assert.AreEqual("200 10 100 30 20 200 10", q.MakeText());
+
+        }
+
+        [TestMethod]
+        public void TestMake()
+        {
+            // ==== Has Placeholders in CommandText
+            q = new SqlStatement("{B} {0} {A} {2} {1} {B} {0}");
+            q.PlaceParameter(0, 10);
+            q.PlaceParameter(1, 20);
+            q.PlaceParameter(2, 30);
+            q.PlaceParameter("A", 100);
+            q.PlaceParameter("B", 200);
+
+            // CommandType Text
+            q.CommandFactory = new SqlPlace.Factories.SqlCommandFactory();
+            var cmdInfo = q.Make();
+            Assert.AreEqual("@B @p0 @A @p2 @p1 @B @p0", cmdInfo.CommandText);
+            Assert.AreEqual("@p0", cmdInfo.Parameters[0].ParameterName); Assert.AreEqual(10, cmdInfo.Parameters[0].Value);
+            Assert.AreEqual("@p1", cmdInfo.Parameters[1].ParameterName); Assert.AreEqual(20, cmdInfo.Parameters[1].Value);
+            Assert.AreEqual("@p2", cmdInfo.Parameters[2].ParameterName); Assert.AreEqual(30, cmdInfo.Parameters[2].Value);
+            Assert.AreEqual("@A", cmdInfo.Parameters[3].ParameterName); Assert.AreEqual(100, cmdInfo.Parameters[3].Value);
+            Assert.AreEqual("@B", cmdInfo.Parameters[4].ParameterName); Assert.AreEqual(200, cmdInfo.Parameters[4].Value);
+
+            q.CommandFactory = new SqlPlace.Factories.OleDbCommandFactory();
+            cmdInfo = q.Make();
+            Assert.AreEqual("? ? ? ? ? ? ?", cmdInfo.CommandText);
+            Assert.AreEqual("p0", cmdInfo.Parameters[0].ParameterName); Assert.AreEqual(200, cmdInfo.Parameters[0].Value);
+            Assert.AreEqual("p1", cmdInfo.Parameters[1].ParameterName); Assert.AreEqual(10, cmdInfo.Parameters[1].Value);
+            Assert.AreEqual("p2", cmdInfo.Parameters[2].ParameterName); Assert.AreEqual(100, cmdInfo.Parameters[2].Value);
+            Assert.AreEqual("p3", cmdInfo.Parameters[3].ParameterName); Assert.AreEqual(30, cmdInfo.Parameters[3].Value);
+            Assert.AreEqual("p4", cmdInfo.Parameters[4].ParameterName); Assert.AreEqual(20, cmdInfo.Parameters[4].Value);
+            Assert.AreEqual("p5", cmdInfo.Parameters[5].ParameterName); Assert.AreEqual(200, cmdInfo.Parameters[5].Value);
+            Assert.AreEqual("p6", cmdInfo.Parameters[6].ParameterName); Assert.AreEqual(10, cmdInfo.Parameters[6].Value);
+
+            q.CommandFactory = new SqlPlace.Factories.OdbcCommandFactory();
+            cmdInfo = q.Make();
+            Assert.AreEqual("? ? ? ? ? ? ?", cmdInfo.CommandText);
+            Assert.AreEqual("p0", cmdInfo.Parameters[0].ParameterName); Assert.AreEqual(200, cmdInfo.Parameters[0].Value);
+            Assert.AreEqual("p1", cmdInfo.Parameters[1].ParameterName); Assert.AreEqual(10, cmdInfo.Parameters[1].Value);
+            Assert.AreEqual("p2", cmdInfo.Parameters[2].ParameterName); Assert.AreEqual(100, cmdInfo.Parameters[2].Value);
+            Assert.AreEqual("p3", cmdInfo.Parameters[3].ParameterName); Assert.AreEqual(30, cmdInfo.Parameters[3].Value);
+            Assert.AreEqual("p4", cmdInfo.Parameters[4].ParameterName); Assert.AreEqual(20, cmdInfo.Parameters[4].Value);
+            Assert.AreEqual("p5", cmdInfo.Parameters[5].ParameterName); Assert.AreEqual(200, cmdInfo.Parameters[5].Value);
+            Assert.AreEqual("p6", cmdInfo.Parameters[6].ParameterName); Assert.AreEqual(10, cmdInfo.Parameters[6].Value);
+
+            // CommandType StoredProcedure
+            q.CommandType = CommandType.StoredProcedure; ;
+
+            q.CommandFactory = new SqlPlace.Factories.SqlCommandFactory();
+            cmdInfo = q.Make();
+            Assert.AreEqual("@B @p0 @A @p2 @p1 @B @p0", cmdInfo.CommandText);
+            Assert.AreEqual("@p0", cmdInfo.Parameters[0].ParameterName); Assert.AreEqual(10, cmdInfo.Parameters[0].Value);
+            Assert.AreEqual("@p1", cmdInfo.Parameters[1].ParameterName); Assert.AreEqual(20, cmdInfo.Parameters[1].Value);
+            Assert.AreEqual("@p2", cmdInfo.Parameters[2].ParameterName); Assert.AreEqual(30, cmdInfo.Parameters[2].Value);
+            Assert.AreEqual("@A", cmdInfo.Parameters[3].ParameterName); Assert.AreEqual(100, cmdInfo.Parameters[3].Value);
+            Assert.AreEqual("@B", cmdInfo.Parameters[4].ParameterName); Assert.AreEqual(200, cmdInfo.Parameters[4].Value);
+
+            q.CommandFactory = new SqlPlace.Factories.OleDbCommandFactory();
+            cmdInfo = q.Make();
+            Assert.AreEqual("? ? ? ? ? ? ?", cmdInfo.CommandText);
+            Assert.AreEqual("B", cmdInfo.Parameters[0].ParameterName); Assert.AreEqual(200, cmdInfo.Parameters[0].Value);
+            Assert.AreEqual("p0", cmdInfo.Parameters[1].ParameterName); Assert.AreEqual(10, cmdInfo.Parameters[1].Value);
+            Assert.AreEqual("A", cmdInfo.Parameters[2].ParameterName); Assert.AreEqual(100, cmdInfo.Parameters[2].Value);
+            Assert.AreEqual("p2", cmdInfo.Parameters[3].ParameterName); Assert.AreEqual(30, cmdInfo.Parameters[3].Value);
+            Assert.AreEqual("p1", cmdInfo.Parameters[4].ParameterName); Assert.AreEqual(20, cmdInfo.Parameters[4].Value);
+            Assert.AreEqual("B", cmdInfo.Parameters[5].ParameterName); Assert.AreEqual(200, cmdInfo.Parameters[5].Value);
+            Assert.AreEqual("p0", cmdInfo.Parameters[6].ParameterName); Assert.AreEqual(10, cmdInfo.Parameters[6].Value);
+
+            q.CommandFactory = new SqlPlace.Factories.OdbcCommandFactory();
+            cmdInfo = q.Make();
+            Assert.AreEqual("? ? ? ? ? ? ?", cmdInfo.CommandText);
+            Assert.AreEqual("B", cmdInfo.Parameters[0].ParameterName); Assert.AreEqual(200, cmdInfo.Parameters[0].Value);
+            Assert.AreEqual("p0", cmdInfo.Parameters[1].ParameterName); Assert.AreEqual(10, cmdInfo.Parameters[1].Value);
+            Assert.AreEqual("A", cmdInfo.Parameters[2].ParameterName); Assert.AreEqual(100, cmdInfo.Parameters[2].Value);
+            Assert.AreEqual("p2", cmdInfo.Parameters[3].ParameterName); Assert.AreEqual(30, cmdInfo.Parameters[3].Value);
+            Assert.AreEqual("p1", cmdInfo.Parameters[4].ParameterName); Assert.AreEqual(20, cmdInfo.Parameters[4].Value);
+            Assert.AreEqual("B", cmdInfo.Parameters[5].ParameterName); Assert.AreEqual(200, cmdInfo.Parameters[5].Value);
+            Assert.AreEqual("p0", cmdInfo.Parameters[6].ParameterName); Assert.AreEqual(10, cmdInfo.Parameters[6].Value);
+
+
+            // ==== Has No Placeholders in CommandText
+            q = new SqlStatement("CommandText");
+            q.PlaceParameter("B", 200);
+            q.PlaceParameter(0, 10);
+            q.PlaceParameter("A", 100);
+            q.PlaceParameter(2, 30);
+            q.PlaceParameter(1, 20);
+
+            // CommandType Text
+            q.CommandFactory = new SqlPlace.Factories.SqlCommandFactory();
+            cmdInfo = q.Make();
+            Assert.AreEqual("CommandText", cmdInfo.CommandText);
+            Assert.AreEqual("@p0", cmdInfo.Parameters[0].ParameterName); Assert.AreEqual(10, cmdInfo.Parameters[0].Value);
+            Assert.AreEqual("@p1", cmdInfo.Parameters[1].ParameterName); Assert.AreEqual(20, cmdInfo.Parameters[1].Value);
+            Assert.AreEqual("@p2", cmdInfo.Parameters[2].ParameterName); Assert.AreEqual(30, cmdInfo.Parameters[2].Value);
+            Assert.AreEqual("@B", cmdInfo.Parameters[3].ParameterName); Assert.AreEqual(200, cmdInfo.Parameters[3].Value);
+            Assert.AreEqual("@A", cmdInfo.Parameters[4].ParameterName); Assert.AreEqual(100, cmdInfo.Parameters[4].Value);
+
+            q.CommandFactory = new SqlPlace.Factories.OleDbCommandFactory();
+            cmdInfo = q.Make();
+            // CommandType Text without parameter placeholders for non-namable-param won't yield a thing
+            Assert.AreEqual("CommandText", cmdInfo.CommandText);
+            Assert.AreEqual(0, cmdInfo.Parameters.Count());
+
+            q.CommandFactory = new SqlPlace.Factories.OdbcCommandFactory();
+            cmdInfo = q.Make();
+            // CommandType Text without parameter placeholders for non-namable-param won't yield a thing
+            Assert.AreEqual("CommandText", cmdInfo.CommandText);
+            Assert.AreEqual(0, cmdInfo.Parameters.Count());
+
+            // CommandType StoredProcedure
+            q.CommandType = CommandType.StoredProcedure; ;
+
+            q.CommandFactory = new SqlPlace.Factories.SqlCommandFactory();
+            cmdInfo = q.Make();
+            Assert.AreEqual("CommandText", cmdInfo.CommandText);
+            Assert.AreEqual("@p0", cmdInfo.Parameters[0].ParameterName); Assert.AreEqual(10, cmdInfo.Parameters[0].Value);
+            Assert.AreEqual("@p1", cmdInfo.Parameters[1].ParameterName); Assert.AreEqual(20, cmdInfo.Parameters[1].Value);
+            Assert.AreEqual("@p2", cmdInfo.Parameters[2].ParameterName); Assert.AreEqual(30, cmdInfo.Parameters[2].Value);
+            Assert.AreEqual("@B", cmdInfo.Parameters[3].ParameterName); Assert.AreEqual(200, cmdInfo.Parameters[3].Value);
+            Assert.AreEqual("@A", cmdInfo.Parameters[4].ParameterName); Assert.AreEqual(100, cmdInfo.Parameters[4].Value);
+            
+            q.CommandFactory = new SqlPlace.Factories.OleDbCommandFactory();
+            cmdInfo = q.Make();
+            // Actually this use case shouldn't happen (CommandType StoredProcedure with indexed parameters)
+            Assert.AreEqual("CommandText", cmdInfo.CommandText);
+            Assert.AreEqual("p0", cmdInfo.Parameters[0].ParameterName); Assert.AreEqual(10, cmdInfo.Parameters[0].Value);
+            Assert.AreEqual("p1", cmdInfo.Parameters[1].ParameterName); Assert.AreEqual(20, cmdInfo.Parameters[1].Value);
+            Assert.AreEqual("p2", cmdInfo.Parameters[2].ParameterName); Assert.AreEqual(30, cmdInfo.Parameters[2].Value);
+            Assert.AreEqual("B", cmdInfo.Parameters[3].ParameterName); Assert.AreEqual(200, cmdInfo.Parameters[3].Value);
+            Assert.AreEqual("A", cmdInfo.Parameters[4].ParameterName); Assert.AreEqual(100, cmdInfo.Parameters[4].Value);
+
+            q.CommandFactory = new SqlPlace.Factories.OdbcCommandFactory();
+            // Actually this use case shouldn't happen (CommandType StoredProcedure with indexed parameters)
+            cmdInfo = q.Make();
+            Assert.AreEqual("CommandText", cmdInfo.CommandText);
+            Assert.AreEqual("p0", cmdInfo.Parameters[0].ParameterName); Assert.AreEqual(10, cmdInfo.Parameters[0].Value);
+            Assert.AreEqual("p1", cmdInfo.Parameters[1].ParameterName); Assert.AreEqual(20, cmdInfo.Parameters[1].Value);
+            Assert.AreEqual("p2", cmdInfo.Parameters[2].ParameterName); Assert.AreEqual(30, cmdInfo.Parameters[2].Value);
+            Assert.AreEqual("B", cmdInfo.Parameters[3].ParameterName); Assert.AreEqual(200, cmdInfo.Parameters[3].Value);
+            Assert.AreEqual("A", cmdInfo.Parameters[4].ParameterName); Assert.AreEqual(100, cmdInfo.Parameters[4].Value);
+
+        }
+
+        [TestMethod]
+        public void TestMakeWithoutPlace()
+        {
+            var q = new SqlStatement("{B} {1} {S1} {0} {A}");
+            var q1 = q.PlaceStatement("S1", "{0} {S2}");
+            var q2 = q.PlaceStatement("S2", "{0}");
+
+            q.CommandFactory = new SqlPlace.Factories.SqlCommandFactory();
+            var cmd = q.MakeCommand();
+            Assert.AreEqual("@B @p1 @p2 @p3 @p0 @A", cmd.CommandText);
+            Assert.AreEqual(0, cmd.Parameters.Count);
+
+            q.CommandFactory = new SqlPlace.Factories.OleDbCommandFactory();
+            cmd = q.MakeCommand();
+            Assert.AreEqual("? ? ? ? ? ?", cmd.CommandText);
+            Assert.AreEqual(0, cmd.Parameters.Count);
+
+            q.CommandFactory = new SqlPlace.Factories.OdbcCommandFactory();
+            cmd = q.MakeCommand();
+            Assert.AreEqual("? ? ? ? ? ?", cmd.CommandText);
+            Assert.AreEqual(0, cmd.Parameters.Count);
+
+            q.PlaceParameters(1, 2);
+            q1.PlaceParameters(11);
+            q2.PlaceParameters(21);
+            q.PlaceParameters(new { A="a", B="b"});
+
+            q.CommandFactory = new SqlPlace.Factories.SqlCommandFactory();
+            cmd = q.MakeCommand();
+            Assert.AreEqual("@B @p1 @p2 @p3 @p0 @A", cmd.CommandText);
+            Assert.AreEqual(1, cmd.Parameters[0].Value);
+            Assert.AreEqual(2, cmd.Parameters[1].Value);
+            Assert.AreEqual(11, cmd.Parameters[2].Value);
+            Assert.AreEqual(21, cmd.Parameters[3].Value);
+            Assert.AreEqual("a", cmd.Parameters[4].Value);
+            Assert.AreEqual("b", cmd.Parameters[5].Value);
+            
+            q.CommandFactory = new SqlPlace.Factories.OleDbCommandFactory();
+            cmd = q.MakeCommand();
+            Assert.AreEqual("? ? ? ? ? ?", cmd.CommandText);
+            Assert.AreEqual("b", cmd.Parameters[0].Value);
+            Assert.AreEqual(2, cmd.Parameters[1].Value);
+            Assert.AreEqual(11, cmd.Parameters[2].Value);
+            Assert.AreEqual(21, cmd.Parameters[3].Value);
+            Assert.AreEqual(1, cmd.Parameters[4].Value);
+            Assert.AreEqual("a", cmd.Parameters[5].Value);
+
+            q.CommandFactory = new SqlPlace.Factories.OdbcCommandFactory();
+            cmd = q.MakeCommand();
+            Assert.AreEqual("? ? ? ? ? ?", cmd.CommandText);
+            Assert.AreEqual("b", cmd.Parameters[0].Value);
+            Assert.AreEqual(2, cmd.Parameters[1].Value);
+            Assert.AreEqual(11, cmd.Parameters[2].Value);
+            Assert.AreEqual(21, cmd.Parameters[3].Value);
+            Assert.AreEqual(1, cmd.Parameters[4].Value);
+            Assert.AreEqual("a", cmd.Parameters[5].Value);
         }
 
         [TestMethod]
@@ -570,6 +793,8 @@ AS BEGIN select @poutput = '(('+convert(varchar, @pinput)+'))';  return 31; END"
                 if(q!=null)
                 {
                     q.CommandType = CommandType.StoredProcedure;
+                    // Since there is no refernce to parameters in CommandText
+                    // So the order of placing does matter here.
                     q.PlaceParameter("preturn", new ParameterInfo() { DbType = DbType.Int32, Direction = ParameterDirection.ReturnValue });
                     q.PlaceParameter("pinput", 123);
                     q.PlaceParameter("poutput", new ParameterInfo() { DbType = DbType.AnsiString, Size = 50, Direction = ParameterDirection.Output });
@@ -592,41 +817,46 @@ AS BEGIN select @poutput = '(('+convert(varchar, @pinput)+'))';  return 31; END"
         [TestMethod]
         public void TestDefaultFactory()
         {
-            var q = new SqlStatement("");
-            q.MakeCommand();
-            Assert.IsTrue(q.CommandFactory.GetType() == typeof(SqlPlace.Factories.SqlCommandFactory));
-            q = new SqlStatement("");
-            q.MakeCommand();
-            Assert.IsTrue(q.CommandFactory.GetType() == typeof(SqlPlace.Factories.SqlCommandFactory));
+            try
+            {
+                var q = new SqlStatement("");
+                q.MakeCommand();
+                Assert.IsTrue(q.CommandFactory.GetType() == typeof(SqlPlace.Factories.SqlCommandFactory));
+                q = new SqlStatement("");
+                q.MakeCommand();
+                Assert.IsTrue(q.CommandFactory.GetType() == typeof(SqlPlace.Factories.SqlCommandFactory));
 
-            SqlStatement.DefaultCommandFactory = new SqlPlace.Factories.OleDbCommandFactory();
-            q = new SqlStatement("");
-            q.MakeCommand();
-            Assert.IsTrue(q.CommandFactory.GetType() == typeof(SqlPlace.Factories.OleDbCommandFactory));
-            q = new SqlStatement("");
-            q.MakeCommand();
-            Assert.IsTrue(q.CommandFactory.GetType() == typeof(SqlPlace.Factories.OleDbCommandFactory));
+                SqlStatement.DefaultCommandFactory = new SqlPlace.Factories.OleDbCommandFactory();
+                q = new SqlStatement("");
+                q.MakeCommand();
+                Assert.IsTrue(q.CommandFactory.GetType() == typeof(SqlPlace.Factories.OleDbCommandFactory));
+                q = new SqlStatement("");
+                q.MakeCommand();
+                Assert.IsTrue(q.CommandFactory.GetType() == typeof(SqlPlace.Factories.OleDbCommandFactory));
 
-            q = new SqlStatement("");
-            q.CommandFactory = new SqlPlace.Factories.OdbcCommandFactory();
-            q.MakeCommand();
-            Assert.IsTrue(q.CommandFactory.GetType() == typeof(SqlPlace.Factories.OdbcCommandFactory));
-            Assert.IsTrue(SqlStatement.DefaultCommandFactory.GetType() == typeof(SqlPlace.Factories.OleDbCommandFactory));
+                q = new SqlStatement("");
+                q.CommandFactory = new SqlPlace.Factories.OdbcCommandFactory();
+                q.MakeCommand();
+                Assert.IsTrue(q.CommandFactory.GetType() == typeof(SqlPlace.Factories.OdbcCommandFactory));
+                Assert.IsTrue(SqlStatement.DefaultCommandFactory.GetType() == typeof(SqlPlace.Factories.OleDbCommandFactory));
 
-            DbConnection conn = new System.Data.SqlClient.SqlConnection();
-            q = new SqlStatement("");
-            q.MakeCommand(conn);
-            Assert.IsTrue(q.CommandFactory.GetType() == typeof(SqlPlace.Factories.SqlCommandFactory));
-            conn = new System.Data.OleDb.OleDbConnection();
-            q = new SqlStatement("");
-            q.MakeCommand(conn);
-            Assert.IsTrue(q.CommandFactory.GetType() == typeof(SqlPlace.Factories.OleDbCommandFactory));
-            conn = new System.Data.Odbc.OdbcConnection();
-            q = new SqlStatement("");
-            q.MakeCommand(conn);
-            Assert.IsTrue(q.CommandFactory.GetType() == typeof(SqlPlace.Factories.OdbcCommandFactory));
-
-            SqlStatement.DefaultCommandFactory = new SqlPlace.Factories.SqlCommandFactory();
+                DbConnection conn = new System.Data.SqlClient.SqlConnection();
+                q = new SqlStatement("");
+                q.MakeCommand(conn);
+                Assert.IsTrue(q.CommandFactory.GetType() == typeof(SqlPlace.Factories.SqlCommandFactory));
+                conn = new System.Data.OleDb.OleDbConnection();
+                q = new SqlStatement("");
+                q.MakeCommand(conn);
+                Assert.IsTrue(q.CommandFactory.GetType() == typeof(SqlPlace.Factories.OleDbCommandFactory));
+                conn = new System.Data.Odbc.OdbcConnection();
+                q = new SqlStatement("");
+                q.MakeCommand(conn);
+                Assert.IsTrue(q.CommandFactory.GetType() == typeof(SqlPlace.Factories.OdbcCommandFactory));
+            }
+            finally
+            {
+                SqlStatement.DefaultCommandFactory = new SqlPlace.Factories.SqlCommandFactory();
+            }
         }
 
         [TestMethod]
@@ -636,7 +866,7 @@ AS BEGIN select @poutput = '(('+convert(varchar, @pinput)+'))';  return 31; END"
 
             // TODO Data provider specific replacement
 
-            // TODO Should it throw exception on Make if found no parameter assignment ?
+            // TODO Test binary column
 
         }
 

@@ -304,7 +304,7 @@ namespace SqlPlace
             var cmdInfo = MakeRecursive(ref paramOffset);
             if(!CommandFactory.IsSupportNamedParameter())
             {
-                // Redetermine parameter order
+                // Redetermine parameter order from CommandText
                 var parameterInOrder = new List<ParameterInfo>();
                 var paramPattern = new System.Text.RegularExpressions.Regex(@"\{([\d\w]+)\}");
                 int placeHolderPosition = 0;
@@ -312,24 +312,37 @@ namespace SqlPlace
                     delegate (System.Text.RegularExpressions.Match match) {
                         var token = match.Groups[0].Value;
                         var param = cmdInfo.Parameters.Where(p => p.ParameterName == token).FirstOrDefault();
-                        if(CommandType==CommandType.StoredProcedure)
+                        if(param._parameterName != null)
                         {
-                            // Retain name for StoredProcedure
-                            param._parameterName = CommandFactory.GetParameterName(param._globalName);
+                            if (CommandType == CommandType.StoredProcedure)
+                            {
+                                // Retain name for StoredProcedure
+                                var name = match.Groups[1].Value;
+                                if (name.All(Char.IsNumber))
+                                    param._parameterName = CommandFactory.GetParameterName(int.Parse(name));
+                                else
+                                    param._parameterName = CommandFactory.GetParameterName(param._globalName);
+                            }
+                            else
+                            {
+                                param._globalName = null;
+                                param._parameterName = CommandFactory.GetParameterName(placeHolderPosition);
+                            }
+                            parameterInOrder.Add(param);
                         }
-                        else
-                        {
-                            param._globalName = null;
-                            param._parameterName = CommandFactory.GetParameterName(placeHolderPosition);
-                        }
-                        parameterInOrder.Add(param);
                         placeHolderPosition += 1;
                         return CommandFactory.GetParameterPlaceholder(placeHolderPosition);
                     });
-                if (CommandType==CommandType.StoredProcedure && parameterInOrder.Count == 0)
+                if (CommandType == CommandType.StoredProcedure && parameterInOrder.Count == 0)
                 {
                     for (int i = 0; i < cmdInfo.Parameters.Length; i++)
-                        cmdInfo.Parameters[i]._parameterName = CommandFactory.GetParameterName(cmdInfo.Parameters[i]._globalName);
+                    {
+                        var name = cmdInfo.Parameters[i]._parameterName.Trim('{', '}');
+                        if (name.All(Char.IsNumber))
+                            cmdInfo.Parameters[i]._parameterName = CommandFactory.GetParameterName(int.Parse(name));
+                        else
+                            cmdInfo.Parameters[i]._parameterName = CommandFactory.GetParameterName(cmdInfo.Parameters[i]._globalName);
+                    }
                 }
                 else
                 {
@@ -339,6 +352,24 @@ namespace SqlPlace
             return cmdInfo;
         }
 
+        private string MakeParameterName(int index)
+        {
+            string paramName;
+            if (CommandFactory.IsSupportNamedParameter())
+                paramName = CommandFactory.GetParameterName(index); // Final parameter name
+            else
+                paramName = "{" + (index).ToString() + "}"; // Intermediate parameter index
+            return paramName;
+        }
+        private string MakeParameterName(string name)
+        {
+            string paramName;
+            if (CommandFactory.IsSupportNamedParameter())
+                paramName = CommandFactory.GetParameterName(name); // Final parameter name
+            else
+                paramName = "{" + name + "}"; // Intermediate parameter name
+            return paramName;
+        }
         protected virtual CommandInfo MakeRecursive(ref int paramOffset)
         {
             string commandText = _sql;
@@ -350,37 +381,33 @@ namespace SqlPlace
             var indexedParameters = IndexedParameters();
             var numericPattern = new System.Text.RegularExpressions.Regex(@"\{(\d+)\}");
             var matches = numericPattern.Matches(commandText);
+            // ... CommantText
+            var maxLocalIndex = -1;
             foreach (System.Text.RegularExpressions.Match match in matches)
             {
                 var token = match.Groups[0].Value;
                 int localIndex = int.Parse(match.Groups[1].Value);
-                //if (localIndex > indexedParameters.Length)
-                //    throw new System.Exception($"Parameter {token} has not been assigned.");
-                string paramName;
-                if (CommandFactory.IsSupportNamedParameter())
-                    paramName = CommandFactory.GetParameterName(paramOffset + localIndex);
-                else
-                    paramName = "{" + (paramOffset + localIndex).ToString() + "}";
+                if (localIndex > maxLocalIndex) maxLocalIndex = localIndex;
+                string paramName = MakeParameterName(paramOffset + localIndex);
                 commandText = commandText.Replace(token, paramName);
             }
+            // ... Parameters
             for (int i = 0; i < indexedParameters.Length; i++)
             {
                 var param = indexedParameters[i];
-                string paramName;
-                if(CommandFactory.IsSupportNamedParameter())
-                    paramName = CommandFactory.GetParameterName(paramOffset + i);
-                else
-                    paramName = "{" + (paramOffset + i).ToString() + "}";
+                string paramName = MakeParameterName(paramOffset + i);
                 param._parameterName = paramName;
                 parameters.Add(param);
             }
-            paramOffset += parameters.Count;
+            if (parameters.Count-1 > maxLocalIndex) maxLocalIndex = parameters.Count-1;
+            paramOffset += maxLocalIndex+1;
 
             // Process named token
             var allNamedParameters = Root.AllNamedParameters();
             var allNamedStatements = Root.AllNamedStatements();
             var stringPattern = new System.Text.RegularExpressions.Regex(@"\{(\w+?)\}");
             matches = stringPattern.Matches(commandText);
+            // ... CommandText
             foreach (System.Text.RegularExpressions.Match match in matches)
             {
                 var token = match.Groups[0].Value;
@@ -396,31 +423,20 @@ namespace SqlPlace
                         parameters.AddRange(childCmdInfo.Parameters);
                     }
                 }
-                else if (allNamedParameters.ContainsKey(globalName))
+                else
                 {
                     // parameter
-                    string paramName;
-                    if(CommandFactory.IsSupportNamedParameter())
-                        paramName = CommandFactory.GetParameterName(globalName);
-                    else
-                        paramName = "{" + globalName + "}";
+                    string paramName = MakeParameterName(globalName);
                     commandText = commandText.Replace(token, paramName);
                 }
-                //else
-                //{
-                //    throw new System.Exception($"Parameter {token} has not been assigned.");
-                //}
             }
+            // ... Parameters
             if (this == Root)
             {
                 foreach (string globalName in allNamedParameters.Keys)
                 {
                     var param = allNamedParameters[globalName];
-                    string paramName;
-                    if(CommandFactory.IsSupportNamedParameter())
-                        paramName = CommandFactory.GetParameterName(globalName);
-                    else
-                        paramName = "{" + globalName + "}";
+                    string paramName = MakeParameterName(globalName);
                     param._parameterName = paramName;
                     parameters.Add(param);
                 }

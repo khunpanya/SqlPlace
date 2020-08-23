@@ -272,6 +272,8 @@ To run stored procedure with return/output values
 ```csharp
 var q = new SqlStatement("StoredProcedure1");
 q.CommandType = CommandType.StoredProcedure;
+// Since there is no refernce to parameters in CommandText
+// So the order of placing does matter for some DB provider
 q.PlaceParameter("preturn", new ParameterInfo() { DbType = DbType.Int32, Direction = ParameterDirection.ReturnValue });
 q.PlaceParameter("pinput", 123);
 q.PlaceParameter("poutput", new ParameterInfo() { DbType = DbType.AnsiString, Size = 50, Direction = ParameterDirection.Output });
