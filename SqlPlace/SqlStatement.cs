@@ -312,16 +312,25 @@ namespace SqlPlace
                     delegate (System.Text.RegularExpressions.Match match) {
                         var token = match.Groups[0].Value;
                         var param = cmdInfo.Parameters.Where(p => p.ParameterName == token).FirstOrDefault();
-                        var name = match.Groups[1].Value;
-                        if(name.All(Char.IsNumber))
-                            param._parameterName = CommandFactory.GetParameterName(int.Parse(name));
+                        if (CommandType == CommandType.StoredProcedure)
+                        {
+                            // Retain name for StoredProcedure
+                            var name = match.Groups[1].Value;
+                            if (name.All(Char.IsNumber))
+                                param._parameterName = CommandFactory.GetParameterName(int.Parse(name));
+                            else
+                                param._parameterName = CommandFactory.GetParameterName(param._globalName);
+                        }
                         else
-                            param._parameterName = CommandFactory.GetParameterName(param._globalName);
+                        {
+                            param._globalName = null;
+                            param._parameterName = CommandFactory.GetParameterName(placeHolderPosition);
+                        }
                         parameterInOrder.Add(param);
                         placeHolderPosition += 1;
                         return CommandFactory.GetParameterPlaceholder(placeHolderPosition);
                     });
-                if (parameterInOrder.Count == 0)
+                if (CommandType == CommandType.StoredProcedure && parameterInOrder.Count == 0)
                 {
                     for (int i = 0; i < cmdInfo.Parameters.Length; i++)
                     {

@@ -385,7 +385,7 @@ namespace UnitTestProject
         public void TestMake()
         {
             // ==== Has Placeholders in CommandText
-            q = new SqlStatement("{B} {0} {A} {2} {1}");
+            q = new SqlStatement("{B} {0} {A} {2} {1} {B} {0}");
             q.PlaceParameter(0, 10);
             q.PlaceParameter(1, 20);
             q.PlaceParameter(2, 30);
@@ -395,7 +395,7 @@ namespace UnitTestProject
             // CommandType Text
             q.CommandFactory = new SqlPlace.Factories.SqlCommandFactory();
             var cmdInfo = q.Make();
-            Assert.AreEqual("@B @p0 @A @p2 @p1", cmdInfo.CommandText);
+            Assert.AreEqual("@B @p0 @A @p2 @p1 @B @p0", cmdInfo.CommandText);
             Assert.AreEqual("@p0", cmdInfo.Parameters[0].ParameterName); Assert.AreEqual(10, cmdInfo.Parameters[0].Value);
             Assert.AreEqual("@p1", cmdInfo.Parameters[1].ParameterName); Assert.AreEqual(20, cmdInfo.Parameters[1].Value);
             Assert.AreEqual("@p2", cmdInfo.Parameters[2].ParameterName); Assert.AreEqual(30, cmdInfo.Parameters[2].Value);
@@ -404,28 +404,32 @@ namespace UnitTestProject
 
             q.CommandFactory = new SqlPlace.Factories.OleDbCommandFactory();
             cmdInfo = q.Make();
-            Assert.AreEqual("? ? ? ? ?", cmdInfo.CommandText);
-            Assert.AreEqual("B", cmdInfo.Parameters[0].ParameterName); Assert.AreEqual(200, cmdInfo.Parameters[0].Value);
-            Assert.AreEqual("p0", cmdInfo.Parameters[1].ParameterName); Assert.AreEqual(10, cmdInfo.Parameters[1].Value);
-            Assert.AreEqual("A", cmdInfo.Parameters[2].ParameterName); Assert.AreEqual(100, cmdInfo.Parameters[2].Value);
-            Assert.AreEqual("p2", cmdInfo.Parameters[3].ParameterName); Assert.AreEqual(30, cmdInfo.Parameters[3].Value);
-            Assert.AreEqual("p1", cmdInfo.Parameters[4].ParameterName); Assert.AreEqual(20, cmdInfo.Parameters[4].Value);
+            Assert.AreEqual("? ? ? ? ? ? ?", cmdInfo.CommandText);
+            Assert.AreEqual("p0", cmdInfo.Parameters[0].ParameterName); Assert.AreEqual(200, cmdInfo.Parameters[0].Value);
+            Assert.AreEqual("p1", cmdInfo.Parameters[1].ParameterName); Assert.AreEqual(10, cmdInfo.Parameters[1].Value);
+            Assert.AreEqual("p2", cmdInfo.Parameters[2].ParameterName); Assert.AreEqual(100, cmdInfo.Parameters[2].Value);
+            Assert.AreEqual("p3", cmdInfo.Parameters[3].ParameterName); Assert.AreEqual(30, cmdInfo.Parameters[3].Value);
+            Assert.AreEqual("p4", cmdInfo.Parameters[4].ParameterName); Assert.AreEqual(20, cmdInfo.Parameters[4].Value);
+            Assert.AreEqual("p5", cmdInfo.Parameters[5].ParameterName); Assert.AreEqual(200, cmdInfo.Parameters[5].Value);
+            Assert.AreEqual("p6", cmdInfo.Parameters[6].ParameterName); Assert.AreEqual(10, cmdInfo.Parameters[6].Value);
 
             q.CommandFactory = new SqlPlace.Factories.OdbcCommandFactory();
             cmdInfo = q.Make();
-            Assert.AreEqual("? ? ? ? ?", cmdInfo.CommandText);
-            Assert.AreEqual("B", cmdInfo.Parameters[0].ParameterName); Assert.AreEqual(200, cmdInfo.Parameters[0].Value);
-            Assert.AreEqual("p0", cmdInfo.Parameters[1].ParameterName); Assert.AreEqual(10, cmdInfo.Parameters[1].Value);
-            Assert.AreEqual("A", cmdInfo.Parameters[2].ParameterName); Assert.AreEqual(100, cmdInfo.Parameters[2].Value);
-            Assert.AreEqual("p2", cmdInfo.Parameters[3].ParameterName); Assert.AreEqual(30, cmdInfo.Parameters[3].Value);
-            Assert.AreEqual("p1", cmdInfo.Parameters[4].ParameterName); Assert.AreEqual(20, cmdInfo.Parameters[4].Value);
+            Assert.AreEqual("? ? ? ? ? ? ?", cmdInfo.CommandText);
+            Assert.AreEqual("p0", cmdInfo.Parameters[0].ParameterName); Assert.AreEqual(200, cmdInfo.Parameters[0].Value);
+            Assert.AreEqual("p1", cmdInfo.Parameters[1].ParameterName); Assert.AreEqual(10, cmdInfo.Parameters[1].Value);
+            Assert.AreEqual("p2", cmdInfo.Parameters[2].ParameterName); Assert.AreEqual(100, cmdInfo.Parameters[2].Value);
+            Assert.AreEqual("p3", cmdInfo.Parameters[3].ParameterName); Assert.AreEqual(30, cmdInfo.Parameters[3].Value);
+            Assert.AreEqual("p4", cmdInfo.Parameters[4].ParameterName); Assert.AreEqual(20, cmdInfo.Parameters[4].Value);
+            Assert.AreEqual("p5", cmdInfo.Parameters[5].ParameterName); Assert.AreEqual(200, cmdInfo.Parameters[5].Value);
+            Assert.AreEqual("p6", cmdInfo.Parameters[6].ParameterName); Assert.AreEqual(10, cmdInfo.Parameters[6].Value);
 
             // CommandType StoredProcedure
             q.CommandType = CommandType.StoredProcedure; ;
 
             q.CommandFactory = new SqlPlace.Factories.SqlCommandFactory();
             cmdInfo = q.Make();
-            Assert.AreEqual("@B @p0 @A @p2 @p1", cmdInfo.CommandText);
+            Assert.AreEqual("@B @p0 @A @p2 @p1 @B @p0", cmdInfo.CommandText);
             Assert.AreEqual("@p0", cmdInfo.Parameters[0].ParameterName); Assert.AreEqual(10, cmdInfo.Parameters[0].Value);
             Assert.AreEqual("@p1", cmdInfo.Parameters[1].ParameterName); Assert.AreEqual(20, cmdInfo.Parameters[1].Value);
             Assert.AreEqual("@p2", cmdInfo.Parameters[2].ParameterName); Assert.AreEqual(30, cmdInfo.Parameters[2].Value);
@@ -434,21 +438,25 @@ namespace UnitTestProject
 
             q.CommandFactory = new SqlPlace.Factories.OleDbCommandFactory();
             cmdInfo = q.Make();
-            Assert.AreEqual("? ? ? ? ?", cmdInfo.CommandText);
+            Assert.AreEqual("? ? ? ? ? ? ?", cmdInfo.CommandText);
             Assert.AreEqual("B", cmdInfo.Parameters[0].ParameterName); Assert.AreEqual(200, cmdInfo.Parameters[0].Value);
             Assert.AreEqual("p0", cmdInfo.Parameters[1].ParameterName); Assert.AreEqual(10, cmdInfo.Parameters[1].Value);
             Assert.AreEqual("A", cmdInfo.Parameters[2].ParameterName); Assert.AreEqual(100, cmdInfo.Parameters[2].Value);
             Assert.AreEqual("p2", cmdInfo.Parameters[3].ParameterName); Assert.AreEqual(30, cmdInfo.Parameters[3].Value);
             Assert.AreEqual("p1", cmdInfo.Parameters[4].ParameterName); Assert.AreEqual(20, cmdInfo.Parameters[4].Value);
+            Assert.AreEqual("B", cmdInfo.Parameters[5].ParameterName); Assert.AreEqual(200, cmdInfo.Parameters[5].Value);
+            Assert.AreEqual("p0", cmdInfo.Parameters[6].ParameterName); Assert.AreEqual(10, cmdInfo.Parameters[6].Value);
 
             q.CommandFactory = new SqlPlace.Factories.OdbcCommandFactory();
             cmdInfo = q.Make();
-            Assert.AreEqual("? ? ? ? ?", cmdInfo.CommandText);
+            Assert.AreEqual("? ? ? ? ? ? ?", cmdInfo.CommandText);
             Assert.AreEqual("B", cmdInfo.Parameters[0].ParameterName); Assert.AreEqual(200, cmdInfo.Parameters[0].Value);
             Assert.AreEqual("p0", cmdInfo.Parameters[1].ParameterName); Assert.AreEqual(10, cmdInfo.Parameters[1].Value);
             Assert.AreEqual("A", cmdInfo.Parameters[2].ParameterName); Assert.AreEqual(100, cmdInfo.Parameters[2].Value);
             Assert.AreEqual("p2", cmdInfo.Parameters[3].ParameterName); Assert.AreEqual(30, cmdInfo.Parameters[3].Value);
             Assert.AreEqual("p1", cmdInfo.Parameters[4].ParameterName); Assert.AreEqual(20, cmdInfo.Parameters[4].Value);
+            Assert.AreEqual("B", cmdInfo.Parameters[5].ParameterName); Assert.AreEqual(200, cmdInfo.Parameters[5].Value);
+            Assert.AreEqual("p0", cmdInfo.Parameters[6].ParameterName); Assert.AreEqual(10, cmdInfo.Parameters[6].Value);
 
 
             // ==== Has No Placeholders in CommandText
@@ -471,23 +479,15 @@ namespace UnitTestProject
 
             q.CommandFactory = new SqlPlace.Factories.OleDbCommandFactory();
             cmdInfo = q.Make();
-            // Actually this use case shouldn't happen (CommandType Text without parameter placeholders)
+            // CommandType Text without parameter placeholders for non-namable-param won't yield a thing
             Assert.AreEqual("CommandText", cmdInfo.CommandText);
-            Assert.AreEqual("p0", cmdInfo.Parameters[0].ParameterName); Assert.AreEqual(10, cmdInfo.Parameters[0].Value);
-            Assert.AreEqual("p1", cmdInfo.Parameters[1].ParameterName); Assert.AreEqual(20, cmdInfo.Parameters[1].Value);
-            Assert.AreEqual("p2", cmdInfo.Parameters[2].ParameterName); Assert.AreEqual(30, cmdInfo.Parameters[2].Value);
-            Assert.AreEqual("B", cmdInfo.Parameters[3].ParameterName); Assert.AreEqual(200, cmdInfo.Parameters[3].Value);
-            Assert.AreEqual("A", cmdInfo.Parameters[4].ParameterName); Assert.AreEqual(100, cmdInfo.Parameters[4].Value);
+            Assert.AreEqual(0, cmdInfo.Parameters.Count());
 
             q.CommandFactory = new SqlPlace.Factories.OdbcCommandFactory();
             cmdInfo = q.Make();
-            // Actually this use case shouldn't happen (CommandType Text without parameter placeholders)
+            // CommandType Text without parameter placeholders for non-namable-param won't yield a thing
             Assert.AreEqual("CommandText", cmdInfo.CommandText);
-            Assert.AreEqual("p0", cmdInfo.Parameters[0].ParameterName); Assert.AreEqual(10, cmdInfo.Parameters[0].Value);
-            Assert.AreEqual("p1", cmdInfo.Parameters[1].ParameterName); Assert.AreEqual(20, cmdInfo.Parameters[1].Value);
-            Assert.AreEqual("p2", cmdInfo.Parameters[2].ParameterName); Assert.AreEqual(30, cmdInfo.Parameters[2].Value);
-            Assert.AreEqual("B", cmdInfo.Parameters[3].ParameterName); Assert.AreEqual(200, cmdInfo.Parameters[3].Value);
-            Assert.AreEqual("A", cmdInfo.Parameters[4].ParameterName); Assert.AreEqual(100, cmdInfo.Parameters[4].Value);
+            Assert.AreEqual(0, cmdInfo.Parameters.Count());
 
             // CommandType StoredProcedure
             q.CommandType = CommandType.StoredProcedure; ;
