@@ -312,21 +312,24 @@ namespace SqlPlace
                     delegate (System.Text.RegularExpressions.Match match) {
                         var token = match.Groups[0].Value;
                         var param = cmdInfo.Parameters.Where(p => p.ParameterName == token).FirstOrDefault();
-                        if (CommandType == CommandType.StoredProcedure)
+                        if(param._parameterName != null)
                         {
-                            // Retain name for StoredProcedure
-                            var name = match.Groups[1].Value;
-                            if (name.All(Char.IsNumber))
-                                param._parameterName = CommandFactory.GetParameterName(int.Parse(name));
+                            if (CommandType == CommandType.StoredProcedure)
+                            {
+                                // Retain name for StoredProcedure
+                                var name = match.Groups[1].Value;
+                                if (name.All(Char.IsNumber))
+                                    param._parameterName = CommandFactory.GetParameterName(int.Parse(name));
+                                else
+                                    param._parameterName = CommandFactory.GetParameterName(param._globalName);
+                            }
                             else
-                                param._parameterName = CommandFactory.GetParameterName(param._globalName);
+                            {
+                                param._globalName = null;
+                                param._parameterName = CommandFactory.GetParameterName(placeHolderPosition);
+                            }
+                            parameterInOrder.Add(param);
                         }
-                        else
-                        {
-                            param._globalName = null;
-                            param._parameterName = CommandFactory.GetParameterName(placeHolderPosition);
-                        }
-                        parameterInOrder.Add(param);
                         placeHolderPosition += 1;
                         return CommandFactory.GetParameterPlaceholder(placeHolderPosition);
                     });
@@ -379,12 +382,12 @@ namespace SqlPlace
             var numericPattern = new System.Text.RegularExpressions.Regex(@"\{(\d+)\}");
             var matches = numericPattern.Matches(commandText);
             // ... CommantText
+            var maxLocalIndex = -1;
             foreach (System.Text.RegularExpressions.Match match in matches)
             {
                 var token = match.Groups[0].Value;
                 int localIndex = int.Parse(match.Groups[1].Value);
-                //if (localIndex > indexedParameters.Length)
-                //    throw new System.Exception($"Parameter {token} has not been assigned.");
+                if (localIndex > maxLocalIndex) maxLocalIndex = localIndex;
                 string paramName = MakeParameterName(paramOffset + localIndex);
                 commandText = commandText.Replace(token, paramName);
             }
@@ -396,7 +399,8 @@ namespace SqlPlace
                 param._parameterName = paramName;
                 parameters.Add(param);
             }
-            paramOffset += parameters.Count;
+            if (parameters.Count-1 > maxLocalIndex) maxLocalIndex = parameters.Count-1;
+            paramOffset += maxLocalIndex+1;
 
             // Process named token
             var allNamedParameters = Root.AllNamedParameters();
@@ -419,16 +423,12 @@ namespace SqlPlace
                         parameters.AddRange(childCmdInfo.Parameters);
                     }
                 }
-                else if (allNamedParameters.ContainsKey(globalName))
+                else
                 {
                     // parameter
                     string paramName = MakeParameterName(globalName);
                     commandText = commandText.Replace(token, paramName);
                 }
-                //else
-                //{
-                //    throw new System.Exception($"Parameter {token} has not been assigned.");
-                //}
             }
             // ... Parameters
             if (this == Root)

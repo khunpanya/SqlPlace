@@ -363,7 +363,7 @@ namespace UnitTestProject
             Assert.AreEqual("select * from T1 where F1 in ('1', '3', '5') and F2 in (1, 3, 5)", q.MakeText());
 
 
-            q = new SqlStatement("{B} {0} {A} {2} {1}");
+            q = new SqlStatement("{B} {0} {A} {2} {1} {B} {0}");
             q.PlaceParameter(0, 10);
             q.PlaceParameter(1, 20);
             q.PlaceParameter(2, 30);
@@ -371,13 +371,13 @@ namespace UnitTestProject
             q.PlaceParameter("B", 200);
 
             q.CommandFactory = new SqlPlace.Factories.SqlCommandFactory();
-            Assert.AreEqual("200 10 100 30 20", q.MakeText());
+            Assert.AreEqual("200 10 100 30 20 200 10", q.MakeText());
 
             q.CommandFactory = new SqlPlace.Factories.OleDbCommandFactory();
-            Assert.AreEqual("200 10 100 30 20", q.MakeText());
+            Assert.AreEqual("200 10 100 30 20 200 10", q.MakeText());
 
             q.CommandFactory = new SqlPlace.Factories.OdbcCommandFactory();
-            Assert.AreEqual("200 10 100 30 20", q.MakeText());
+            Assert.AreEqual("200 10 100 30 20 200 10", q.MakeText());
 
         }
 
@@ -523,7 +523,63 @@ namespace UnitTestProject
 
         }
 
+        [TestMethod]
+        public void TestMakeWithoutPlace()
+        {
+            var q = new SqlStatement("{B} {1} {S1} {0} {A}");
+            var q1 = q.PlaceStatement("S1", "{0} {S2}");
+            var q2 = q.PlaceStatement("S2", "{0}");
 
+            q.CommandFactory = new SqlPlace.Factories.SqlCommandFactory();
+            var cmd = q.MakeCommand();
+            Assert.AreEqual("@B @p1 @p2 @p3 @p0 @A", cmd.CommandText);
+            Assert.AreEqual(0, cmd.Parameters.Count);
+
+            q.CommandFactory = new SqlPlace.Factories.OleDbCommandFactory();
+            cmd = q.MakeCommand();
+            Assert.AreEqual("? ? ? ? ? ?", cmd.CommandText);
+            Assert.AreEqual(0, cmd.Parameters.Count);
+
+            q.CommandFactory = new SqlPlace.Factories.OdbcCommandFactory();
+            cmd = q.MakeCommand();
+            Assert.AreEqual("? ? ? ? ? ?", cmd.CommandText);
+            Assert.AreEqual(0, cmd.Parameters.Count);
+
+            q.PlaceParameters(1, 2);
+            q1.PlaceParameters(11);
+            q2.PlaceParameters(21);
+            q.PlaceParameters(new { A="a", B="b"});
+
+            q.CommandFactory = new SqlPlace.Factories.SqlCommandFactory();
+            cmd = q.MakeCommand();
+            Assert.AreEqual("@B @p1 @p2 @p3 @p0 @A", cmd.CommandText);
+            Assert.AreEqual(1, cmd.Parameters[0].Value);
+            Assert.AreEqual(2, cmd.Parameters[1].Value);
+            Assert.AreEqual(11, cmd.Parameters[2].Value);
+            Assert.AreEqual(21, cmd.Parameters[3].Value);
+            Assert.AreEqual("a", cmd.Parameters[4].Value);
+            Assert.AreEqual("b", cmd.Parameters[5].Value);
+            
+            q.CommandFactory = new SqlPlace.Factories.OleDbCommandFactory();
+            cmd = q.MakeCommand();
+            Assert.AreEqual("? ? ? ? ? ?", cmd.CommandText);
+            Assert.AreEqual("b", cmd.Parameters[0].Value);
+            Assert.AreEqual(2, cmd.Parameters[1].Value);
+            Assert.AreEqual(11, cmd.Parameters[2].Value);
+            Assert.AreEqual(21, cmd.Parameters[3].Value);
+            Assert.AreEqual(1, cmd.Parameters[4].Value);
+            Assert.AreEqual("a", cmd.Parameters[5].Value);
+
+            q.CommandFactory = new SqlPlace.Factories.OdbcCommandFactory();
+            cmd = q.MakeCommand();
+            Assert.AreEqual("? ? ? ? ? ?", cmd.CommandText);
+            Assert.AreEqual("b", cmd.Parameters[0].Value);
+            Assert.AreEqual(2, cmd.Parameters[1].Value);
+            Assert.AreEqual(11, cmd.Parameters[2].Value);
+            Assert.AreEqual(21, cmd.Parameters[3].Value);
+            Assert.AreEqual(1, cmd.Parameters[4].Value);
+            Assert.AreEqual("a", cmd.Parameters[5].Value);
+        }
 
         [TestMethod]
         public void TestStoreProcedureCommand()
@@ -810,13 +866,7 @@ AS BEGIN select @poutput = '(('+convert(varchar, @pinput)+'))';  return 31; END"
 
             // TODO Data provider specific replacement
 
-            // TODO Should it throw exception on Make if found no parameter assignment ?
-
-            // TODO Binary
-
-            // TODO Make sure that Make produce correct parameter name
-
-            // TODO CommandInfo.ParameterDictionary
+            // TODO Test binary column
 
         }
 
