@@ -130,13 +130,13 @@ namespace SqlPlace.Factories
         }
 
         private string specificPropName = null;
-        public virtual void SetSpecificDbType(DbParameter parameter, int specificDbType)
+        public virtual string SpecificDbTypePropertyName()
         {
             // Assume that the specific DbType propertie's name is the same as one in constructors
             if(specificPropName == null)
             {
                 System.Reflection.ParameterInfo[] ctorParams;
-                foreach (var ctor in parameter.GetType().GetConstructors())
+                foreach (var ctor in CreateParameter().GetType().GetConstructors())
                 {
                     if ((ctorParams = ctor.GetParameters()).Length == 2 && ctorParams[1].ParameterType.Name.EndsWith("DbType"))
                     {
@@ -147,8 +147,7 @@ namespace SqlPlace.Factories
             }
             if(!string.IsNullOrEmpty(specificPropName))
             {
-                parameter.GetType().GetProperty(specificPropName,
-                    BindingFlags.Instance | BindingFlags.Public).SetValue(parameter, specificDbType, null);
+                return specificPropName;
             }
             else
             {

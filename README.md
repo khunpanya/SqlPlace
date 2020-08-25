@@ -309,9 +309,9 @@ public class OracleCommandFactory : GenericCommandFactory
         return cmd;
     }
 
-    public override void SetSpecificDbType(DbParameter parameter, int specificDbType)
+    public override string SpecificDbTypePropertyName()
     {
-        (parameter as OracleParameter).OracleDbType = (OracleDbType)specificDbType;
+        return "OracleDbType";
     }
 
     public override bool IsSupportNamedParameter()

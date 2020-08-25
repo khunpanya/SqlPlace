@@ -19,7 +19,7 @@ namespace SqlPlace.Factories
 
         string GetParameterPlaceholder(int paramIndex);
 
-        void SetSpecificDbType(DbParameter parameter, int specificDbType);
+        string SpecificDbTypePropertyName();
 
         bool IsSupportNamedParameter();
 

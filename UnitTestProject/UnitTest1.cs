@@ -627,17 +627,35 @@ namespace UnitTestProject
         public void TestSpecificDbType()
         {
             var dateValue = new DateTime(1970, 1, 1);
-            q = new SqlStatement("{0}, {1}, {2}", 
+            var dt = new DataTable();
+            q = new SqlStatement("{0}, {1}, {2}, {3}", 
                 dateValue, 
                 new ParameterInfo(dateValue, DbType.DateTime2), 
-                new ParameterInfo(dateValue) { SpecificDbType = (int)SqlDbType.SmallDateTime });
+                new ParameterInfo(dateValue) { SpecificDbType = (int)SqlDbType.SmallDateTime },
+                new ParameterInfo(dt) { SpecificDbType = (int)SqlDbType.Structured, OnParameterCreated = (param)=> { var p = param as SqlParameter; p.TypeName = "dbo.SomeTableType"; } });
             cmd = q.MakeCommand();
             Assert.AreEqual(dateValue, cmd.Parameters["@p0"].Value);
             Assert.AreEqual(dateValue, cmd.Parameters["@p1"].Value);
             Assert.AreEqual(dateValue, cmd.Parameters["@p2"].Value);
+            Assert.IsTrue(cmd.Parameters["@p3"].Value.GetType() == typeof(DataTable));
+            Assert.AreEqual("dbo.SomeTableType", (cmd.Parameters["@p3"] as SqlParameter).TypeName);
             Assert.AreEqual(SqlDbType.DateTime, (cmd.Parameters["@p0"] as SqlParameter).SqlDbType);
             Assert.AreEqual(SqlDbType.DateTime2, (cmd.Parameters["@p1"] as SqlParameter).SqlDbType);
             Assert.AreEqual(SqlDbType.SmallDateTime, (cmd.Parameters["@p2"] as SqlParameter).SqlDbType);
+            Assert.AreEqual(SqlDbType.Structured, (cmd.Parameters["@p3"] as SqlParameter).SqlDbType);
+
+            q = new SqlStatement("{0}",
+                new ParameterInfo(11) { SpecificDbType = (int)System.Data.OleDb.OleDbType.BigInt });
+            q.CommandFactory = new SqlPlace.Factories.OleDbCommandFactory();
+            cmd = q.MakeCommand();
+            Assert.AreEqual(System.Data.OleDb.OleDbType.BigInt, (cmd.Parameters["p0"] as System.Data.OleDb.OleDbParameter).OleDbType);
+
+            q = new SqlStatement("{0}",
+                            new ParameterInfo(11) { SpecificDbType = (int)System.Data.Odbc.OdbcType.BigInt });
+            q.CommandFactory = new SqlPlace.Factories.OdbcCommandFactory();
+            cmd = q.MakeCommand();
+            Assert.AreEqual(System.Data.Odbc.OdbcType.BigInt, (cmd.Parameters["p0"] as System.Data.Odbc.OdbcParameter).OdbcType);
+
         }
 
         [TestMethod]
