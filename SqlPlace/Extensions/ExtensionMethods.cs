@@ -35,13 +35,13 @@ namespace SqlPlace.Extensions
         }
 
         [DebuggerStepThrough()]
-        public static IDataReader ExecuteReader(this DbConnection conn, SqlStatement q, DbTransaction tx = null)
+        public static IDataReader ExecuteReader(this DbConnection conn, SqlStatement q, DbTransaction tx = null, CommandBehavior behavior = CommandBehavior.Default)
         {
             using (var command = q.MakeCommand(conn))
             {
                 if (tx != null) command.Transaction = tx;
                 if (conn.State != ConnectionState.Open) conn.Open();
-                return command.ExecuteReader();
+                return command.ExecuteReader(behavior);
             }
         }
 
