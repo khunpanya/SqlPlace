@@ -627,17 +627,35 @@ namespace UnitTestProject
         public void TestSpecificDbType()
         {
             var dateValue = new DateTime(1970, 1, 1);
-            q = new SqlStatement("{0}, {1}, {2}", 
+            var dt = new DataTable();
+            q = new SqlStatement("{0}, {1}, {2}, {3}", 
                 dateValue, 
                 new ParameterInfo(dateValue, DbType.DateTime2), 
-                new ParameterInfo(dateValue) { SpecificDbType = (int)SqlDbType.SmallDateTime });
+                new ParameterInfo(dateValue) { SpecificDbType = (int)SqlDbType.SmallDateTime },
+                new ParameterInfo(dt) { SpecificDbType = (int)SqlDbType.Structured, OnParameterCreated = (param)=> { var p = param as SqlParameter; p.TypeName = "dbo.SomeTableType"; } });
             cmd = q.MakeCommand();
             Assert.AreEqual(dateValue, cmd.Parameters["@p0"].Value);
             Assert.AreEqual(dateValue, cmd.Parameters["@p1"].Value);
             Assert.AreEqual(dateValue, cmd.Parameters["@p2"].Value);
+            Assert.IsTrue(cmd.Parameters["@p3"].Value.GetType() == typeof(DataTable));
+            Assert.AreEqual("dbo.SomeTableType", (cmd.Parameters["@p3"] as SqlParameter).TypeName);
             Assert.AreEqual(SqlDbType.DateTime, (cmd.Parameters["@p0"] as SqlParameter).SqlDbType);
             Assert.AreEqual(SqlDbType.DateTime2, (cmd.Parameters["@p1"] as SqlParameter).SqlDbType);
             Assert.AreEqual(SqlDbType.SmallDateTime, (cmd.Parameters["@p2"] as SqlParameter).SqlDbType);
+            Assert.AreEqual(SqlDbType.Structured, (cmd.Parameters["@p3"] as SqlParameter).SqlDbType);
+
+            q = new SqlStatement("{0}",
+                new ParameterInfo(11) { SpecificDbType = (int)System.Data.OleDb.OleDbType.BigInt });
+            q.CommandFactory = new SqlPlace.Factories.OleDbCommandFactory();
+            cmd = q.MakeCommand();
+            Assert.AreEqual(System.Data.OleDb.OleDbType.BigInt, (cmd.Parameters["p0"] as System.Data.OleDb.OleDbParameter).OleDbType);
+
+            q = new SqlStatement("{0}",
+                            new ParameterInfo(11) { SpecificDbType = (int)System.Data.Odbc.OdbcType.BigInt });
+            q.CommandFactory = new SqlPlace.Factories.OdbcCommandFactory();
+            cmd = q.MakeCommand();
+            Assert.AreEqual(System.Data.Odbc.OdbcType.BigInt, (cmd.Parameters["p0"] as System.Data.Odbc.OdbcParameter).OdbcType);
+
         }
 
         [TestMethod]
@@ -677,6 +695,7 @@ namespace UnitTestProject
             public int Field1 { get; set; }
             public string Field2 { get; set; }
             public DateTime? Field3 { get; set; }
+            public byte[] Field4 { get; set; }
         }
 
         [TestMethod]
@@ -700,13 +719,13 @@ namespace UnitTestProject
                 conn.Open();
                 var trans = conn.BeginTransaction();
 
-                var q = new SqlStatement("create table #Test(Field1 int, Field2 varchar(50), Field3 datetime)");
+                var q = new SqlStatement("create table #Test(Field1 int, Field2 varchar(50), Field3 datetime, Field4 varbinary(100))");
                 conn.ExecuteNonQuery(q, trans);
 
-                var o1 = new POCO { Field1 = 1, Field2 = "AA", Field3 = new DateTime(2019, 8, 8) };
-                var o2 = new POCO { Field1 = 2, Field2 = "BB", Field3 = new DateTime(2020, 8, 8) };
-                var o3 = new POCO { Field1 = 3, Field2 = "CC", Field3 = new DateTime(2021, 8, 8) };
-                q = new SqlStatement("insert into #Test values({Field1}, {Field2}, {Field3})");
+                var o1 = new POCO { Field1 = 1, Field2 = "AA", Field3 = new DateTime(2019, 8, 8), Field4 = new byte[] { 48, 49, 50 } };
+                var o2 = new POCO { Field1 = 2, Field2 = "BB", Field3 = new DateTime(2020, 8, 8), Field4 = new byte[] { 65, 66, 67 } };
+                var o3 = new POCO { Field1 = 3, Field2 = "CC", Field3 = new DateTime(2021, 8, 8), Field4 = new byte[] { 97, 98, 99 } };
+                q = new SqlStatement("insert into #Test values({Field1}, {Field2}, {Field3}, {Field4})");
                 q.PlaceParameters(o1);
                 Assert.AreEqual(1, conn.ExecuteNonQuery(q, trans));
                 q.PlaceParameters(o2);
@@ -720,13 +739,29 @@ namespace UnitTestProject
                 q.PlaceParameter(0, 3);
                 Assert.AreEqual("CC", conn.ExecuteScalar(q, trans));
 
+                byte[] buff;
+                q = new SqlStatement("select Field4 from #Test where Field1={0}");
+                q.PlaceParameter(0, 1);
+                buff = (byte[])conn.ExecuteScalar(q, trans);
+                Assert.AreEqual(48, buff[0]);
+                Assert.AreEqual(49, buff[1]);
+
                 q = new SqlStatement("select * from #Test where Field1 > 1 order by Field1");
                 using (var rdr = conn.ExecuteReader(q, trans))
                 {
+
                     rdr.Read();
                     Assert.AreEqual("BB", rdr.GetString(1));
+                    rdr.GetBytes(3, 0, buff, 0, 3);
+                    Assert.AreEqual(65, buff[0]);
+                    Assert.AreEqual(66, buff[1]);
+
                     rdr.Read();
                     Assert.AreEqual("CC", rdr.GetString(1));
+                    rdr.GetBytes(3, 0, buff, 0, 3);
+                    Assert.AreEqual(97, buff[0]);
+                    Assert.AreEqual(98, buff[1]);
+
                     rdr.Close();
                 };
 
@@ -765,6 +800,8 @@ namespace UnitTestProject
                 Assert.AreEqual(1, pocos[0].Field1);
                 Assert.AreEqual(2, pocos[1].Field1);
                 Assert.AreEqual(3, pocos[2].Field1);
+                Assert.AreEqual(48, pocos[0].Field4[0]);
+                Assert.AreEqual(49, pocos[0].Field4[1]);
 
                 var dyns = conn.ExecuteToDictionaries(q, trans).ToArray();
                 Assert.AreEqual(1, dyns[0]["Field1"]);
@@ -865,8 +902,6 @@ AS BEGIN select @poutput = '(('+convert(varchar, @pinput)+'))';  return 31; END"
             // TODO Clone (for slightly different)
 
             // TODO Data provider specific replacement
-
-            // TODO Test binary column
 
         }
 

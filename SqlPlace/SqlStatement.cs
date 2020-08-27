@@ -4,6 +4,7 @@ using System.Data;
 using System.Data.Common;
 using System.Globalization;
 using System.Linq;
+using System.Reflection;
 
 namespace SqlPlace
 {
@@ -278,10 +279,16 @@ namespace SqlPlace
                 var parameter = CommandFactory.CreateParameter();
                 parameter.ParameterName = param.ParameterName;
                 parameter.Value = pValue;
-                if (param.DbType.HasValue) parameter.DbType = param.DbType.Value;
-                if (param.SpecificDbType.HasValue) CommandFactory.SetSpecificDbType(parameter, param.SpecificDbType.Value);
-                if (param.Size.HasValue) parameter.Size = param.Size.Value;
-                if (param.Direction.HasValue) parameter.Direction = param.Direction.Value;
+                if (param.DbType.HasValue) 
+                    parameter.DbType = param.DbType.Value;
+                if (param.SpecificDbType.HasValue)
+                    parameter.GetType().GetProperty(CommandFactory.SpecificDbTypePropertyName(), BindingFlags.Instance | BindingFlags.Public)
+                        .SetValue(parameter, param.SpecificDbType.Value, null);
+                if (param.Size.HasValue) 
+                    parameter.Size = param.Size.Value;
+                if (param.Direction.HasValue) 
+                    parameter.Direction = param.Direction.Value;
+                param.OnParameterCreated?.Invoke(parameter);
                 cmd.Parameters.Add(parameter);
                 if (param._globalName != null)
                     _dbParameters.Add(param._globalName, parameter);

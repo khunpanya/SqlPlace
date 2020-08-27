@@ -1,8 +1,11 @@
-﻿namespace SqlPlace
+﻿using System.Data;
+using System.Data.Common;
+
+namespace SqlPlace
 {
     public struct ParameterInfo
     {
-        public ParameterInfo(object value, System.Data.DbType? dbType = null, int? size = null)
+        public ParameterInfo(object value, DbType? dbType = null, int? size = null)
         {
             _globalName = null;
             _parameterName = null;
@@ -11,7 +14,10 @@
             SpecificDbType = null;
             Size = size;
             Direction = null;
+            OnParameterCreated = null;
         }
+
+        public delegate void ParameterCreatedCallback(DbParameter parameter);
 
         internal string _globalName;
 
@@ -20,7 +26,7 @@
 
         public object Value;
 
-        public System.Data.DbType? DbType;
+        public DbType? DbType;
 
         /// <summary>
         /// To specify enum value of certain DB type such e.g. SqlDbType, OleDbType
@@ -29,7 +35,9 @@
 
         public int? Size;
 
-        public System.Data.ParameterDirection? Direction;
+        public ParameterDirection? Direction;
+
+        public ParameterCreatedCallback OnParameterCreated;
 
         public override string ToString()
         {

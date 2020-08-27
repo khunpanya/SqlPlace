@@ -11,10 +11,10 @@ namespace SqlPlace.Factories
         {
 
         }
-        
-        public override void SetSpecificDbType(DbParameter parameter, int specificDbType)
+
+        public override string SpecificDbTypePropertyName()
         {
-            (parameter as OdbcParameter).OdbcType = (OdbcType)specificDbType;
+            return "OdbcType";
         }
 
         public override bool IsSupportNamedParameter()

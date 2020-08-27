@@ -12,9 +12,9 @@ namespace SqlPlace.Factories
 
         }
 
-        public override void SetSpecificDbType(DbParameter parameter, int specificDbType)
+        public override string SpecificDbTypePropertyName()
         {
-            (parameter as OleDbParameter).OleDbType = (OleDbType)specificDbType;
+            return "OleDbType";
         }
 
         public override bool IsSupportNamedParameter()
