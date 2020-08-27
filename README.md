@@ -5,9 +5,8 @@
 SqlPlace is a .NET framework library to help you build complex parameterized SQL query.\
 (.NET Standard version coming soon)
 
-- SqlPlace encourages you to write "real" SQL query by its natural structure.
 - Help you compose SQL and get the result with shortest code possible.
-- Help you parameterize query with less code. Also free you from parameter ordering hassle.
+- Help you parameterize query with less code. Also free you from parameter ordering hassles.
 - Help you compose complex query using statement template.
 - Help you dynamically generate query from data list.
 - Does not help you switch among SQL dialects. You have to decide for one.
