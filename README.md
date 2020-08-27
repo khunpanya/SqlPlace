@@ -40,8 +40,9 @@ using(var conn = new SqlConnection(connString))
     var q = new SqlPlace.SqlStatement("select * from Table1 where f1={0}", 10);
     DbCommand cmd = q.MakeCommand(conn);
 
-    // cmd is SqlCommand with parameter(s). You can do any ADO.NET execution with it.
-
+    // cmd is SqlCommand "select * from Table1 where f1=@p0"
+    // with SqlParameter @p0 = 10
+    // You can do any ADO.NET execution with it.
 }
 ```
 
