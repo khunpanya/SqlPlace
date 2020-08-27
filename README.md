@@ -2,8 +2,10 @@
 
 [![SqlPlace on Nuget](https://img.shields.io/nuget/vpre/SqlPlace.svg)](https://www.nuget.org/packages/SqlPlace)
 
-SqlPlace is a .NET framework library to help you build complex parameterized SQL query.
+SqlPlace is a .NET framework library to help you build complex parameterized SQL query.\
+(.NET Standard version coming soon)
 
+- [What is SqlPlace](#what-is-sqlplace)
 - [Basic usage](#basic-usage)
 - [Parameterizing](#parameterizing)
     - [Indexed parameters](#indexed-parameters)
@@ -18,6 +20,16 @@ SqlPlace is a .NET framework library to help you build complex parameterized SQL
 - [Advance](#advance)
     - [Parameter info](#parameter-info)
     - [Other DB Providers](#other-db-providers)
+
+# What is SqlPlace
+- Kind of SQL query composer. Base on ADO.NET technology.
+- Encourage you to write "real" SQL query by its nature structure.
+- Help you parameterize query with less code. Also free you from parameter ordering hassle.
+- Help you compose complex query using statement template.
+- Help you dynamically generate query from data list.
+- Does not help you switch among SQL dialects. You have to decide one.
+- Good for making SQL for dynamic CRUDs, WHERE-IN clause, nested query, MERGE query, PIVOT query, etc.
+- Micro ORM is included, though is not the focus.
 
 # Basic usage
 Use **SqlPlace.SqlStatement** class to compose SQL and construct ADO.NET DbCommand.
