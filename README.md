@@ -28,7 +28,7 @@ SqlPlace is a .NET framework library to help you build complex parameterized SQL
 - [Advance](#advance)
     - [Parameter info](#parameter-info)
     - [Other DB Providers](#other-db-providers)
-- [SQL Dialect (Experimental feature)](#sql-dialect-(experimental-feature))
+- [SQL Dialect (Experimental feature)](#sql-dialect-experimental-feature)
     - [String implicit conversion](#string-implicit-conversion)
     - [SqlDialect](#sqldialect)
 
