@@ -1,16 +1,27 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Data;
 using System.Linq;
 
 namespace SqlPlace
 {
-    public class SqlList: SqlStatement 
+    public class SqlList: SqlStatement, IEnumerable<SqlStatement>
     {
         public string Separator { get; }
         public string EmptyString { get; }
 
         List<SqlStatement> items = new List<SqlStatement>();
+
+        public IEnumerator<SqlStatement> GetEnumerator()
+        {
+            return items.GetEnumerator();
+        }
+
+        IEnumerator IEnumerable.GetEnumerator()
+        {
+            return items.GetEnumerator();
+        }
 
         public SqlList(string separator, string emptyString = null): base(string.Empty)
         {
