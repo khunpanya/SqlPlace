@@ -61,7 +61,7 @@ namespace SqlPlace
             return Syntax(nameof(IsNull), new object[] { Expression, Value });
         }
 
-        public static SqlStatement Select(SqlStatement Selection, SqlStatement From, SqlStatement Where)
+        public static SqlStatement Select(SqlStatement Selection, SqlStatement From, SqlStatement Where, int? Offset = null, int? Fetch = null)
         {
             return Syntax(nameof(Select), new object[] { Selection, From, Where });
         }

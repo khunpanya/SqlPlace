@@ -9,7 +9,7 @@ SqlPlace is a .NET framework library to help you build complex parameterized SQL
 - Help you parameterize query with less code. Also free you from parameter ordering hassles.
 - Help you compose complex query using statement template.
 - Help you dynamically generate query from data list.
-- Does not help you switch among SQL dialects. You have to decide for one.
+- Help you automatically switch among SQL dialects.
 - Good for making SQL for dynamic CRUD, WHERE-IN clause, nested query, MERGE query, PIVOT query, etc.
 
 ---
@@ -28,6 +28,9 @@ SqlPlace is a .NET framework library to help you build complex parameterized SQL
 - [Advance](#advance)
     - [Parameter info](#parameter-info)
     - [Other DB Providers](#other-db-providers)
+- [SQL Dialect (Experimental feature)](#sql-dialect-(experimental-feature))
+    - [String implicit conversion](#string-implicit-conversion)
+    - [SqlDialect](#sqldialect)
 
 # Basic usage
 Use **SqlPlace.SqlStatement** class to compose SQL and call **MakeCommand** to construct ADO.NET DbCommand.
@@ -331,4 +334,57 @@ public class OracleCommandFactory : SqlPlace.Factories.GenericCommandFactory
         return true;
     }
 }
+```
+
+# SQL Dialect (Experimental feature)
+## String implicit conversion
+Before we dive into SQL dialect feature. 
+It is worth noting how SqlStatement works on string implicit conversion.
+Take a look at this csharp code.
+```csharp
+var q = new SqlStatement("select f1, getdate() f2 from Table1 where f1>{A}");
+// Will Make into "select f1, getdate() f2 from Table1 where f1>@A"
+```
+With the new string implicit conversion feature. You can also write the code like this.
+```csharp
+SqlStatement q = "select f1, getdate() f2 from Table1 where f1>{A}";
+// Will Make into "select f1, getdate() f2 from Table1 where f1>@A" too
+```
+## SqlDialect
+We are going to change the "getdate()" in the query above with something dialect dependent.\
+There is **SqlPlace.SqlDialect** class to handle all this things.\
+First you will have to set **SqlDialect.DefaultDialectName** or it will, by default, depend on DefaultCommandFactory.\
+Then we will replace "getdate()" with dialect dependent function for "current date" like this.
+```csharp
+SqlStatement q = "select f1, " + SqlDialect.CurrentDate() + " f2 from Table1 where f1>{A}";
+// If DefaultDialectName is "MSSQL"
+// Then this code will Make into 
+// "select f1, CONVERT(DATE, GETDATE()) f2 from Table1 where f1>@A"
+```
+You can make the code shorter by define an alias for SqlDialect at the beginning of your source code.
+```csharp
+using sd = SqlPlace.SqlDialect;
+...
+SqlStatement q = "select f1, " + sd.CurrentDate() + " f2 from Table1 where f1>{A}";
+```
+You can make the code even shorter using string interpolation.
+```csharp
+SqlStatement q = $"select f1, {sd.CurrentDate()} f2 from Table1 where f1>{{A}}";
+// Note the parameter "A" must be escaped here
+```
+If we change DefaultDialectName to something SqlDialect cannot resolve. It will return SQL standard one for "current date".
+```csharp
+sd.DefaultDialectName = "Unknown";
+SqlStatement q = $"select f1, {sd.CurrentDate()} f2 from Table1 where f1>{{A}}";
+// Will Make into
+// "select f1, CURRENT_DATE f2 from Table1 where f1>@A"
+```
+And yes. All dialectal statements can be nested all the way. So the query construction like this is compleletely valid.
+```csharp
+SqlStatement q = sd.Select($"f1, {sd.CurrentDate()} f2",
+                    From: "(" + sd.Select("*", 
+                                    From: "Table1", 
+                                    Where: $"{sd.IsNull("x", "0")}>{{B}}") + ") t1",
+                    Where: "f1>{A}",
+                    Offset: 100, Fetch: 50);
 ```

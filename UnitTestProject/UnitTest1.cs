@@ -917,7 +917,7 @@ AS BEGIN select @poutput = '(('+convert(varchar, @pinput)+'))';  return 31; END"
             cmd = q.Make();
             Assert.AreEqual("select f1, CONVERT(DATE, GETDATE()) f2 from Table1 where f1>@A", cmd.CommandText);
 
-            SqlDialect.DefaultDialectName = "Unknown";
+            sd.DefaultDialectName = "Unknown";
             q = "select f1, " + sd.CurrentDate() + " f2 from Table1 where f1>{A}";
             cmd = q.Make();
             Assert.AreEqual("select f1, CURRENT_DATE f2 from Table1 where f1>@A", cmd.CommandText);
@@ -945,8 +945,14 @@ AS BEGIN select @poutput = '(('+convert(varchar, @pinput)+'))';  return 31; END"
                     From: "(" + sd.Select(sd.IsNull("x", "0"), From: "Table1", Where: "x>{B}") + ") t1",
                     Where: "a={A}");
 
-                //"select " + sd.IsNull("a", "0") + ", " + sd.IsNull("b", "0")
-                //+ " from (" + sd.Select(sd.IsNull("a", "0") + ", " + sd.IsNull("b", "0"), "TX", "1=1") + ") t1 where b={A}";
+            q = sd.Select($"f1, {sd.CurrentDate()} f2",
+                From: "(" + sd.Select("*",
+                                From: "Table1",
+                                Where: $"{sd.IsNull("x", "0")}>{{B}}") + ") t1",
+                Where: "f1>{A}",
+                Offset: 100, Fetch: 50);
+            var s = q.ToString();
+
             q1.PlaceParameters(new { A=10, B=20 });
             cmd = q1.Make();
             text = cmd.CommandText;
