@@ -11,12 +11,12 @@ namespace SqlPlace.Factories
     {
         #region "Registry"
         internal static Dictionary<Type, ICommandFactory> _registry = new Dictionary<Type, ICommandFactory>();
-        protected static int Register<TDbConnection, TCommandFactory>()
+        protected static bool Register<TDbConnection, TCommandFactory>()
             where TDbConnection : DbConnection
             where TCommandFactory : ICommandFactory, new()
         {
             _registry.Add(typeof(TDbConnection), new TCommandFactory());
-            return _registry.Count;
+            return true;
         }
         public static ICommandFactory Resolve<TDbConnection>(TDbConnection connection) where TDbConnection : DbConnection
         {
@@ -26,7 +26,7 @@ namespace SqlPlace.Factories
             } else
             {
                 // Try best to determine DbProviderFactory from DbConnection 
-                // (Due to .net3.5 cannot simply determine DbProviderFactory from DbConnection)
+                // TODO (Due to .net3.5 cannot simply determine DbProviderFactory from DbConnection)
 
                 Type TConn = connection.GetType();
                 DbProviderFactory providerFactory = null;
@@ -129,39 +129,47 @@ namespace SqlPlace.Factories
             return result;
         }
 
-        private string specificPropName = null;
-        public virtual string SpecificDbTypePropertyName()
+        private string _specificDbTypePropertyName = null;
+        public virtual string SpecificDbTypePropertyName
         {
-            // Assume that the specific DbType propertie's name is the same as one in constructors
-            if(specificPropName == null)
+            get
             {
-                System.Reflection.ParameterInfo[] ctorParams;
-                foreach (var ctor in CreateParameter().GetType().GetConstructors())
+                // Assume that the specific DbType propertie's name is the same as one in constructors
+                if (_specificDbTypePropertyName == null)
                 {
-                    if ((ctorParams = ctor.GetParameters()).Length == 2 && ctorParams[1].ParameterType.Name.EndsWith("DbType"))
+                    System.Reflection.ParameterInfo[] ctorParams;
+                    foreach (var ctor in CreateParameter().GetType().GetConstructors())
                     {
-                        specificPropName = ctorParams[1].ParameterType.Name;
-                        break;
+                        if ((ctorParams = ctor.GetParameters()).Length == 2 && ctorParams[1].ParameterType.Name.EndsWith("DbType"))
+                        {
+                            _specificDbTypePropertyName = ctorParams[1].ParameterType.Name;
+                            break;
+                        }
                     }
                 }
-            }
-            if(!string.IsNullOrEmpty(specificPropName))
-            {
-                return specificPropName;
-            }
-            else
-            {
-                throw new Exception("Unable to determine specific DbType propertie's name. A concrete implementation for this DB provider is required.");
+                if (!string.IsNullOrEmpty(_specificDbTypePropertyName))
+                {
+                    return _specificDbTypePropertyName;
+                }
+                else
+                {
+                    throw new Exception("Unable to determine specific DbType propertie's name. A concrete implementation for this DB provider is required.");
+                }
             }
         }
 
-        private bool? _supportNamedParameter;
-        public virtual bool IsSupportNamedParameter()
+        private bool? _isSupportNamedParameter;
+        public virtual bool IsSupportNamedParameter
         {
-            if (!_supportNamedParameter.HasValue)
-                _supportNamedParameter = (GetParameterPlaceholder(42).Contains("42"));
-            return _supportNamedParameter.Value;
+            get
+            {
+                if (!_isSupportNamedParameter.HasValue)
+                    _isSupportNamedParameter = (GetParameterPlaceholder(42).Contains("42"));
+                return _isSupportNamedParameter.Value;
+            }
         }
+
+        public virtual string FactoryDialectName { get; }
 
     }
 

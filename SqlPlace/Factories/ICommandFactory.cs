@@ -19,9 +19,11 @@ namespace SqlPlace.Factories
 
         string GetParameterPlaceholder(int paramIndex);
 
-        string SpecificDbTypePropertyName();
+        string SpecificDbTypePropertyName { get; }
 
-        bool IsSupportNamedParameter();
+        bool IsSupportNamedParameter { get; }
+
+        string FactoryDialectName { get; }
 
     }
 }

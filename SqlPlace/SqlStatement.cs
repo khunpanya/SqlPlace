@@ -40,6 +40,35 @@ namespace SqlPlace
             }
         }
 
+        #region "String manipulation"
+
+        public static implicit operator SqlStatement(string s)
+        {
+            return new SqlStatement(s);
+        }
+
+        public static SqlStatement operator+(SqlStatement left, SqlStatement right)
+        {
+            return Concat(left, string.Empty, right);
+        }
+
+        internal static SqlStatement Concat(SqlStatement left, string join, SqlStatement right)
+        {
+            var leftName = "S" + left.GetHashCode().ToString();
+            var rightName = "S" + right.GetHashCode().ToString();
+            var result = new SqlStatement("{" + leftName + "}"+join+"{" + rightName + "}");
+            result.PlaceStatement(leftName, left);
+            result.PlaceStatement(rightName, right);
+            return result;
+        }
+
+        public override string ToString()
+        {
+            return Make().CommandText;
+        }
+
+        #endregion
+
         internal bool IsPlacable(object obj)
         {
             if (obj is ParameterInfo) return true;
@@ -231,7 +260,19 @@ namespace SqlPlace
         #endregion
 
         #region "DbCommand"
-        public static Factories.ICommandFactory DefaultCommandFactory = new Factories.SqlCommandFactory();
+        private static Factories.ICommandFactory _defaultCommandFactory = new Factories.SqlCommandFactory();
+        public static Factories.ICommandFactory DefaultCommandFactory
+        {
+            get
+            {
+                return _defaultCommandFactory;
+            }
+            set
+            {
+                _defaultCommandFactory = value;
+                SqlDialect.DefaultDialectName = value.FactoryDialectName;
+            }
+        }
         
         protected Factories.ICommandFactory _commandFactory;
         public Factories.ICommandFactory CommandFactory
@@ -282,7 +323,7 @@ namespace SqlPlace
                 if (param.DbType.HasValue) 
                     parameter.DbType = param.DbType.Value;
                 if (param.SpecificDbType.HasValue)
-                    parameter.GetType().GetProperty(CommandFactory.SpecificDbTypePropertyName(), BindingFlags.Instance | BindingFlags.Public)
+                    parameter.GetType().GetProperty(CommandFactory.SpecificDbTypePropertyName, BindingFlags.Instance | BindingFlags.Public)
                         .SetValue(parameter, param.SpecificDbType.Value, null);
                 if (param.Size.HasValue) 
                     parameter.Size = param.Size.Value;
@@ -309,7 +350,7 @@ namespace SqlPlace
                 statement.CommandFactory = this.CommandFactory;
             int paramOffset = 0;
             var cmdInfo = MakeRecursive(ref paramOffset);
-            if(!CommandFactory.IsSupportNamedParameter())
+            if(!CommandFactory.IsSupportNamedParameter)
             {
                 // Redetermine parameter order from CommandText
                 var parameterInOrder = new List<ParameterInfo>();
@@ -362,7 +403,7 @@ namespace SqlPlace
         private string MakeParameterName(int index)
         {
             string paramName;
-            if (CommandFactory.IsSupportNamedParameter())
+            if (CommandFactory.IsSupportNamedParameter)
                 paramName = CommandFactory.GetParameterName(index); // Final parameter name
             else
                 paramName = "{" + (index).ToString() + "}"; // Intermediate parameter index
@@ -371,7 +412,7 @@ namespace SqlPlace
         private string MakeParameterName(string name)
         {
             string paramName;
-            if (CommandFactory.IsSupportNamedParameter())
+            if (CommandFactory.IsSupportNamedParameter)
                 paramName = CommandFactory.GetParameterName(name); // Final parameter name
             else
                 paramName = "{" + name + "}"; // Intermediate parameter name
@@ -462,7 +503,7 @@ namespace SqlPlace
                 statement.CommandFactory = this.CommandFactory;
             int paramOffset = 0;
             var cmdInfo = MakeRecursive(ref paramOffset);
-            if (!CommandFactory.IsSupportNamedParameter())
+            if (!CommandFactory.IsSupportNamedParameter)
             {
                 // Redetermine parameter order
                 var paramPattern = new System.Text.RegularExpressions.Regex(@"\{([\d\w]+)\}");

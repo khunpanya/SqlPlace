@@ -5,21 +5,16 @@ namespace SqlPlace.Factories
 {
     public class OleDbCommandFactory : GenericCommandFactory
     {
-        static int _ = Register<OleDbConnection, OleDbCommandFactory>();
+        private readonly static bool reg = Register<OleDbConnection, OleDbCommandFactory>();
 
         public OleDbCommandFactory() : base(OleDbFactory.Instance)
         {
 
         }
 
-        public override string SpecificDbTypePropertyName()
-        {
-            return "OleDbType";
-        }
+        public override string SpecificDbTypePropertyName => "OleDbType";
 
-        public override bool IsSupportNamedParameter()
-        {
-            return false;
-        }
+        public override bool IsSupportNamedParameter => false;
+
     }
 }

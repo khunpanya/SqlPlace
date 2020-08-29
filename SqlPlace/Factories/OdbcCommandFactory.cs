@@ -5,21 +5,16 @@ namespace SqlPlace.Factories
 {
     public class OdbcCommandFactory : GenericCommandFactory
     {
-        static int _ = Register<OdbcConnection, OdbcCommandFactory>();
+        private readonly static bool reg = Register<OdbcConnection, OdbcCommandFactory>();
 
         public OdbcCommandFactory() : base(OdbcFactory.Instance)
         {
 
         }
 
-        public override string SpecificDbTypePropertyName()
-        {
-            return "OdbcType";
-        }
+        public override string SpecificDbTypePropertyName => "OdbcType";
 
-        public override bool IsSupportNamedParameter()
-        {
-            return false;
-        }
+        public override bool IsSupportNamedParameter => false;
+
     }
 }

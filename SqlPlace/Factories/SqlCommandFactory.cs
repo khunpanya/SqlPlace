@@ -6,21 +6,27 @@ namespace SqlPlace.Factories
 {
     public class SqlCommandFactory : GenericCommandFactory
     {
-        static int _ = Register<SqlConnection, SqlCommandFactory>();
+        private static readonly bool reg = Register<SqlConnection, SqlCommandFactory>();
+
+        private static bool regDialect = false;
 
         public SqlCommandFactory(): base(SqlClientFactory.Instance)
         {
-
+            if(!regDialect)
+            {
+                SqlDialect.RegisterSyntax(FactoryDialectName, nameof(SqlDialect.CurrentDate), arguments =>
+                {
+                    return new SqlStatement("CONVERT(DATE, GETDATE())");
+                });
+                regDialect = true;
+            }
         }
 
-        public override string SpecificDbTypePropertyName()
-        {
-            return "SqlDbType";
-        }
+        public override string SpecificDbTypePropertyName => "SqlDbType";
 
-        public override bool IsSupportNamedParameter()
-        {
-            return true;
-        }
+        public override bool IsSupportNamedParameter => true;
+
+        public override string FactoryDialectName => "MSSQL";
+
     }
 }

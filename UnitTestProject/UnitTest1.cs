@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 using SqlPlace;
 using SqlPlace.Extensions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using sd = SqlPlace.SqlDialect;
 
 namespace UnitTestProject
 {
@@ -500,7 +501,7 @@ namespace UnitTestProject
             Assert.AreEqual("@p2", cmdInfo.Parameters[2].ParameterName); Assert.AreEqual(30, cmdInfo.Parameters[2].Value);
             Assert.AreEqual("@B", cmdInfo.Parameters[3].ParameterName); Assert.AreEqual(200, cmdInfo.Parameters[3].Value);
             Assert.AreEqual("@A", cmdInfo.Parameters[4].ParameterName); Assert.AreEqual(100, cmdInfo.Parameters[4].Value);
-            
+
             q.CommandFactory = new SqlPlace.Factories.OleDbCommandFactory();
             cmdInfo = q.Make();
             // Actually this use case shouldn't happen (CommandType StoredProcedure with indexed parameters)
@@ -548,7 +549,7 @@ namespace UnitTestProject
             q.PlaceParameters(1, 2);
             q1.PlaceParameters(11);
             q2.PlaceParameters(21);
-            q.PlaceParameters(new { A="a", B="b"});
+            q.PlaceParameters(new { A = "a", B = "b" });
 
             q.CommandFactory = new SqlPlace.Factories.SqlCommandFactory();
             cmd = q.MakeCommand();
@@ -559,7 +560,7 @@ namespace UnitTestProject
             Assert.AreEqual(21, cmd.Parameters[3].Value);
             Assert.AreEqual("a", cmd.Parameters[4].Value);
             Assert.AreEqual("b", cmd.Parameters[5].Value);
-            
+
             q.CommandFactory = new SqlPlace.Factories.OleDbCommandFactory();
             cmd = q.MakeCommand();
             Assert.AreEqual("? ? ? ? ? ?", cmd.CommandText);
@@ -628,11 +629,11 @@ namespace UnitTestProject
         {
             var dateValue = new DateTime(1970, 1, 1);
             var dt = new DataTable();
-            q = new SqlStatement("{0}, {1}, {2}, {3}", 
-                dateValue, 
-                new ParameterInfo(dateValue, DbType.DateTime2), 
+            q = new SqlStatement("{0}, {1}, {2}, {3}",
+                dateValue,
+                new ParameterInfo(dateValue, DbType.DateTime2),
                 new ParameterInfo(dateValue) { SpecificDbType = (int)SqlDbType.SmallDateTime },
-                new ParameterInfo(dt) { SpecificDbType = (int)SqlDbType.Structured, OnParameterCreated = (param)=> { var p = param as SqlParameter; p.TypeName = "dbo.SomeTableType"; } });
+                new ParameterInfo(dt) { SpecificDbType = (int)SqlDbType.Structured, OnParameterCreated = (param) => { var p = param as SqlParameter; p.TypeName = "dbo.SomeTableType"; } });
             cmd = q.MakeCommand();
             Assert.AreEqual(dateValue, cmd.Parameters["@p0"].Value);
             Assert.AreEqual(dateValue, cmd.Parameters["@p1"].Value);
@@ -812,22 +813,22 @@ namespace UnitTestProject
 AS BEGIN select @poutput = '(('+convert(varchar, @pinput)+'))';  return 31; END");
                 conn.ExecuteNonQuery(q, trans);
 
-                switch(providerName)
+                switch (providerName)
                 {
-                    case "System.Data.SqlClient": 
+                    case "System.Data.SqlClient":
                         q = new SqlStatement("StoreProcedure1");
                         break;
-                    case "System.Data.OleDb": 
+                    case "System.Data.OleDb":
                         q = new SqlStatement("StoreProcedure1");
                         break;
-                    case "System.Data.Odbc": 
+                    case "System.Data.Odbc":
                         q = new SqlStatement("{{ {preturn} = call StoreProcedure1 ({pinput}, {poutput}) }}"); ;
                         break;
                     default:
                         q = null;
                         break;
                 }
-                if(q!=null)
+                if (q != null)
                 {
                     q.CommandType = CommandType.StoredProcedure;
                     // Since there is no refernce to parameters in CommandText
@@ -897,11 +898,65 @@ AS BEGIN select @poutput = '(('+convert(varchar, @pinput)+'))';  return 31; END"
         }
 
         [TestMethod]
+        public void TestDialect()
+        {
+            SqlStatement q;
+            CommandInfo cmd;
+
+            q = new SqlStatement("select f1, getdate() f2 from Table1 where f1>{A}");
+            q.PlaceParameters(new { A = 10, B = 20 });
+            cmd = q.Make();
+            Assert.AreEqual("select f1, getdate() f2 from Table1 where f1>@A", cmd.CommandText);
+
+            q = "select f1, getdate() f2 from Table1 where f1>{A}";
+            q.PlaceParameters(new { A = 10, B = 20 });
+            cmd = q.Make();
+            Assert.AreEqual("select f1, getdate() f2 from Table1 where f1>@A", cmd.CommandText);
+
+            q = "select f1, " + sd.CurrentDate() + " f2 from Table1 where f1>{A}";
+            cmd = q.Make();
+            Assert.AreEqual("select f1, CONVERT(DATE, GETDATE()) f2 from Table1 where f1>@A", cmd.CommandText);
+
+            SqlDialect.DefaultDialectName = "Unknown";
+            q = "select f1, " + sd.CurrentDate() + " f2 from Table1 where f1>{A}";
+            cmd = q.Make();
+            Assert.AreEqual("select f1, CURRENT_DATE f2 from Table1 where f1>@A", cmd.CommandText);
+
+            q = $"select f1, {sd.CurrentDate()} f2 from Table1 where f1>{{A}}";
+            cmd = q.Make();
+            Assert.AreEqual("select f1, CURRENT_DATE f2 from Table1 where f1>@A", cmd.CommandText);
+
+            q = sd.Select($"f1, {sd.CurrentDate()} f2",
+                    From: "Table1",
+                    Where: "f1>{A}");
+            cmd = q.Make();
+//            Assert.AreEqual(@"SELECT f1, CURRENT_DATE f2
+//FROM Table1
+//WHERE f1>@A", cmd.CommandText);
+
+
+            SqlStatement q1 = "select " + sd.IsNull("a", "0") + ", " + sd.IsNull("b", "0")
+                + " from (" + sd.Select(sd.IsNull("a", "0") + ", " + sd.IsNull("b", "0"), "TX", "1=1") + ") t1 where b={A}";
+            q1.PlaceParameter("A", 20);
+            cmd = q1.Make();
+            var text = cmd.CommandText;
+
+            q1 = sd.Select($"f1, {sd.IsNull("f2", "0")}",
+                    From: "(" + sd.Select(sd.IsNull("x", "0"), From: "Table1", Where: "x>{B}") + ") t1",
+                    Where: "a={A}");
+
+                //"select " + sd.IsNull("a", "0") + ", " + sd.IsNull("b", "0")
+                //+ " from (" + sd.Select(sd.IsNull("a", "0") + ", " + sd.IsNull("b", "0"), "TX", "1=1") + ") t1 where b={A}";
+            q1.PlaceParameters(new { A=10, B=20 });
+            cmd = q1.Make();
+            text = cmd.CommandText;
+
+        }
+
+        [TestMethod]
         public void TestMethodTodo()
         {
             // TODO Clone (for slightly different)
-
-            // TODO Data provider specific replacement
 
         }
 
