@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Linq;
 
 namespace SqlPlace
 {
@@ -8,12 +9,14 @@ namespace SqlPlace
 
         public ParameterInfo[] Parameters;
 
-        //public IEnumerable<KeyValuePair<string, object>> GetParameterDictionary()
-        //{
-        //    var result = new List<KeyValuePair<string, object>>();
-        //    foreach (var param in Parameters)
-        //        result.Add(new KeyValuePair<string, object>(param.ParameterName, param.Value));
-        //    return result;
-        //}
+        public IEnumerable<KeyValuePair<string, object>> GetParameterDictionary()
+        {
+            return Parameters.ToDictionary(p => p.ParameterName, p => p.Value);
+        }
+
+        public object[] GetParameterValues()
+        {
+            return Parameters.Select(p => p.Value).ToArray();
+        }
     }
 }
