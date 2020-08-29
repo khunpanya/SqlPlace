@@ -9,7 +9,7 @@ SqlPlace is a .NET framework library to help you build complex parameterized SQL
 - Help you parameterize query with less code. Also free you from parameter ordering hassles.
 - Help you compose complex query using statement template.
 - Help you dynamically generate query from data list.
-- Does not help you switch among SQL dialects. (Yet!)
+- Does not help you switch among SQL dialects. Yet!. (See this feature in experiment [here](https://github.com/khunpanya/SqlPlace/blob/feature-dialect/README.md#sql-dialect-experimental-feature))
 - Good for making SQL for dynamic CRUD, WHERE-IN clause, nested query, MERGE query, PIVOT query, etc.
 
 ---
