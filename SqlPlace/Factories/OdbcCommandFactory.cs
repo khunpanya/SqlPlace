@@ -1,16 +1,16 @@
-﻿using System.Data.Common;
+﻿using System;
 using System.Data.Odbc;
 
 namespace SqlPlace.Factories
 {
     public class OdbcCommandFactory : GenericCommandFactory
     {
-        private readonly static bool reg = Register<OdbcConnection, OdbcCommandFactory>();
-
         public OdbcCommandFactory() : base(OdbcFactory.Instance)
         {
 
         }
+
+        public override Type DbConnectionType => typeof(OdbcConnection);
 
         public override string SpecificDbTypePropertyName => "OdbcType";
 

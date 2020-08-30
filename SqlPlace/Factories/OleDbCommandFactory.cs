@@ -1,16 +1,16 @@
-﻿using System.Data.Common;
+﻿using System;
 using System.Data.OleDb;
 
 namespace SqlPlace.Factories
 {
     public class OleDbCommandFactory : GenericCommandFactory
     {
-        private readonly static bool reg = Register<OleDbConnection, OleDbCommandFactory>();
-
         public OleDbCommandFactory() : base(OleDbFactory.Instance)
         {
 
         }
+
+        public override Type DbConnectionType => typeof(OleDbConnection);
 
         public override string SpecificDbTypePropertyName => "OleDbType";
 

@@ -10,16 +10,43 @@ namespace SqlPlace.Factories
     public class GenericCommandFactory : ICommandFactory
     {
         #region "Registry"
+
         internal static Dictionary<Type, ICommandFactory> _registry = new Dictionary<Type, ICommandFactory>();
-        protected static bool Register<TDbConnection, TCommandFactory>()
-            where TDbConnection : DbConnection
-            where TCommandFactory : ICommandFactory, new()
+
+        static bool init = false;
+        static object initLock = new object();
+        static void InitializeRegistry()
         {
-            _registry.Add(typeof(TDbConnection), new TCommandFactory());
-            return true;
+            lock (initLock)
+            {
+                if (!init)
+                {
+                    // Scan for all factories
+                    var factoryTypes = (
+                        from domainAssembly in AppDomain.CurrentDomain.GetAssemblies()
+                        from assemblyType in domainAssembly.GetTypes()
+                        where assemblyType.IsSubclassOf(typeof(GenericCommandFactory)) && !assemblyType.ContainsGenericParameters
+                        select assemblyType).ToArray();
+
+                    foreach(var factoryType  in factoryTypes)
+                    {
+                        var factoryInstance = Activator.CreateInstance(factoryType) as GenericCommandFactory;
+                        var dbConnType = factoryInstance.DbConnectionType;
+                        if(dbConnType != null)
+                        {
+                            _registry.Add(dbConnType, factoryInstance);
+                        }
+                    }
+                    init = true;
+                }
+            }
         }
+
+        public virtual Type DbConnectionType { get;  }
+
         public static ICommandFactory Resolve<TDbConnection>(TDbConnection connection) where TDbConnection : DbConnection
         {
+            InitializeRegistry();
             if(_registry.ContainsKey(connection.GetType()))
             {
                 return _registry[connection.GetType()];
