@@ -31,6 +31,7 @@ SqlPlace is a .NET framework library to help you build complex parameterized SQL
 - [SQL Dialect (Experimental feature)](#sql-dialect-experimental-feature)
     - [String implicit conversion](#string-implicit-conversion)
     - [SqlDialect](#sqldialect)
+    - [Extensibility](#Extensibility)
 
 # Basic usage
 Use **SqlPlace.SqlStatement** class to compose SQL and call **MakeCommand** to construct ADO.NET DbCommand.
@@ -352,7 +353,7 @@ SqlStatement q = "select f1, getdate() f2 from Table1 where f1>{A}";
 ```
 ## SqlDialect
 We are going to change the "getdate()" in the query above with something dialect dependent.\
-There is **SqlPlace.SqlDialect** class to handle all this things.\
+There is **SqlPlace.Dialects.SqlDialect** class to handle all this things.\
 First you will have to set **SqlDialect.DefaultDialectName** or it will, by default, depend on DefaultCommandFactory.\
 Then we will replace "getdate()" with dialect dependent function for "current date" like this.
 ```csharp
@@ -361,13 +362,13 @@ SqlStatement q = "select f1, " + SqlDialect.CurrentDate() + " f2 from Table1 whe
 // Then this code will Make into 
 // "select f1, CONVERT(DATE, GETDATE()) f2 from Table1 where f1>@A"
 ```
-You can make the code shorter by define an alias for SqlDialect at the beginning of your source code.
+You can make the code shorter by defining an alias for SqlDialect at the beginning of your source file.
 ```csharp
-using sd = SqlPlace.SqlDialect;
+using sd = SqlPlace.Dialects.SqlDialect;
 ...
 SqlStatement q = "select f1, " + sd.CurrentDate() + " f2 from Table1 where f1>{A}";
 ```
-You can make the code even shorter using string interpolation.
+You can make the code even shorter by using string interpolation.
 ```csharp
 SqlStatement q = $"select f1, {sd.CurrentDate()} f2 from Table1 where f1>{{A}}";
 // Note the parameter "A" must be escaped here
@@ -386,5 +387,26 @@ SqlStatement q = sd.Select($"f1, {sd.CurrentDate()} f2",
                                     From: "Table1", 
                                     Where: $"{sd.IsNull("x", "0")}>{{B}}") + ") t1",
                     Where: "f1>{A}",
-                    Offset: 100, Fetch: 50);
+                    OrderBy: "f1", Offset: 100, Fetch: 50);
+```
+
+## Extensibility
+You can create your own dialect/syntax by create a class that implement **SqlPlace.Dialects.IDialect** like this.
+```csharp
+    public void RegisterDialect()
+    {
+        var dialectName = "MSSQL";
+        SqlDialect.RegisterSyntax(dialectName, nameof(YourOwnSyntax), arguments =>
+        {
+            var expression = arguments[0] as SqlStatement;
+            int number = (int)arguments[1];
+            SqlStatement result = $"YOUR_OWN({expression}, {number})";
+            return result;
+        });
+    }
+
+    public static SqlStatement YourOwnSyntax(SqlStatement expression, int number)
+    {
+        return SqlDialect.Syntax(nameof(YourOwnSyntax), new object[] { expression, number });
+    }
 ```

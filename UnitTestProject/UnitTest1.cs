@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 using SqlPlace;
 using SqlPlace.Extensions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using sd = SqlPlace.SqlDialect;
+using sd = SqlPlace.Dialects.SqlDialect;
 
 namespace UnitTestProject
 {
@@ -944,17 +944,19 @@ AS BEGIN select @poutput = '(('+convert(varchar, @pinput)+'))';  return 31; END"
             q1 = sd.Select($"f1, {sd.IsNull("f2", "0")}",
                     From: "(" + sd.Select(sd.IsNull("x", "0"), From: "Table1", Where: "x>{B}") + ") t1",
                     Where: "a={A}");
+            q1.PlaceParameters(new { A = 10, B = 20 });
+            cmd = q1.Make();
 
+            sd.DefaultDialectName = "MSSQL";
             q = sd.Select($"f1, {sd.CurrentDate()} f2",
                 From: "(" + sd.Select("*",
-                                From: "Table1",
+                                From: $"{CustomSyntaxes.YourOwnSyntax("Table1", 1)}",
                                 Where: $"{sd.IsNull("x", "0")}>{{B}}") + ") t1",
                 Where: "f1>{A}",
-                Offset: 100, Fetch: 50);
-            var s = q.ToString();
+                OrderBy: "f1", Offset: 100, Fetch: 50);
+            q.PlaceParameters(new { A=10, B=20 });
+            cmd = q.Make();
 
-            q1.PlaceParameters(new { A=10, B=20 });
-            cmd = q1.Make();
             text = cmd.CommandText;
 
         }

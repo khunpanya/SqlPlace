@@ -270,7 +270,7 @@ namespace SqlPlace
             set
             {
                 _defaultCommandFactory = value;
-                SqlDialect.DefaultDialectName = value.FactoryDialectName;
+                Dialects.SqlDialect.DefaultDialectName = value.FactoryDialectName;
             }
         }
         

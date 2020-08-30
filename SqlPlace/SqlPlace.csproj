@@ -45,7 +45,10 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="CommandInfo.cs" />
-    <Compile Include="SqlDialect.cs" />
+    <Compile Include="Dialects\IDialect.cs" />
+    <Compile Include="Dialects\MSSQL.cs" />
+    <Compile Include="Dialects\SqlDialect.cs" />
+    <Compile Include="Dialects\Standard.cs" />
     <Compile Include="Extensions\ExtensionMethods.cs" />
     <Compile Include="Factories\ICommandFactory.cs" />
     <Compile Include="Factories\GenericCommandFactory.cs" />
